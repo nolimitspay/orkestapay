@@ -1,4 +1,8 @@
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
+const dataDir = path.join(__dirname, '../data');
+if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recurive: true });
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
