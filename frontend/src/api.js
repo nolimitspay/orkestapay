@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-const BASE = process.env.REACT_APP_API_URL || '';
-const api = axios.create({ baseURL: BASE + '/api' });
+const api = axios.create({ baseURL: 'https://orkestapay-backend.onrender.com/api' })
 
 export const gatewaysApi = {
   getAll: () => api.get('/gateways').then(r => r.data),
