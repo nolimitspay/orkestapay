@@ -14,7 +14,7 @@ const app = express();
 
 // ── Security middleware ──────────────────────
 app.use(helmet());
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000', credentials: true }));
+app.use(cors({ origin: '*', credentials: false }));
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 500 }));
 
 // ── Raw body for Stripe webhooks (must be before json()) ──
