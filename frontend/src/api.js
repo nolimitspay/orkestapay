@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api` :});
-  
+const BASE = process.env.REACT_APP_API_URL || '';
+const api = axios.create({ baseURL: BASE + '/api' });
+
 export const gatewaysApi = {
   getAll: () => api.get('/gateways').then(r => r.data),
   create: (data) => api.post('/gateways', data).then(r => r.data),
