@@ -489,10 +489,76 @@ tr:hover td { background: ${G.cardHover}; }
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
 }
 
-@media (max-width: 900px) {
+/* ── HAMBURGER BUTTON ── */
+.hamburger {
+  display: none;
+  flex-direction: column; gap: 5px;
+  cursor: pointer; background: none; border: none;
+  padding: 6px; border-radius: 8px;
+  transition: background 0.2s;
+}
+.hamburger:hover { background: ${G.cardHover}; }
+.hamburger span {
+  display: block; width: 22px; height: 2px;
+  background: ${G.dim}; border-radius: 2px;
+  transition: all 0.3s;
+}
+
+/* ── OVERLAY ── */
+.sidebar-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: #00000080;
+  z-index: 40;
+  backdrop-filter: blur(2px);
+}
+
+@media (max-width: 768px) {
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .grid-2 { grid-template-columns: 1fr; }
   .grid-3 { grid-template-columns: 1fr; }
+
+  .hamburger { display: flex; }
+
+  .sidebar {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    box-shadow: 4px 0 40px #00000080;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  .sidebar-overlay.open {
+    display: block;
+  }
+
+  .main { width: 100%; }
+
+  .topbar { padding: 14px 16px; }
+  .page-title { font-size: 18px; }
+  .content { padding: 20px 16px; }
+
+  .kpi-value { font-size: 22px; }
+  .kpi-card { padding: 16px; }
+
+  .filters { flex-direction: column; align-items: flex-start; }
+  .search { width: 100%; }
+
+  table { font-size: 12px; }
+  th { padding: 8px 12px; }
+  td { padding: 10px 12px; }
+
+  .modal { padding: 24px 20px; }
+  .form-row { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .kpi-value { font-size: 20px; }
+  .btn { padding: 7px 14px; font-size: 11px; }
 }
 `;
 
@@ -508,7 +574,7 @@ function Login({ onLogin }) {
     if (!email || !password) { setError('Completa todos los campos'); return; }
     setLoading(true); setError('');
     try {
-      const { data } = await axios.post('https://orkestapay-backend.onrender.com/api/auth/login', { email, password });
+      const { data } = await axios.post('/api/auth/login', { email, password });
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       onLogin(data.user);
@@ -1425,7 +1491,10 @@ export default function App() {
   });
   const [section, setSection] = useState('dashboard');
   const [toast, setToast] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const showToast = useCallback((msg, type = 'success') => setToast({ msg, type }), []);
+
+  const goTo = (id) => { setSection(id); setSidebarOpen(false); };
 
   if (!user) return <Login onLogin={setUser} />;
 
@@ -1454,7 +1523,8 @@ export default function App() {
       <style>{css}</style>
       <div className="layout">
         {/* SIDEBAR */}
-        <aside className="sidebar">
+        <div className={`sidebar-overlay ${sidebarOpen ? "open" : ""}`} onClick={() => setSidebarOpen(false)} />
+        <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
           <div className="sidebar-top">
             <div className="logo-wrap">
               <div className="logo-icon">N</div>
@@ -1468,14 +1538,14 @@ export default function App() {
           <nav className="nav">
             <div className="nav-section-label">Principal</div>
             {navItems.slice(0, 5).map(item => (
-              <button key={item.id} className={`nav-item ${section === item.id ? 'active' : ''}`} onClick={() => setSection(item.id)}>
+              <button key={item.id} className={`nav-item ${section === item.id ? 'active' : ''}`} onClick={() => goTo(item.id)}>
                 <span className="nav-icon">{item.icon}</span>
                 <span>{item.label}</span>
               </button>
             ))}
             <div className="nav-section-label" style={{ marginTop: 8 }}>Integraciones</div>
             {navItems.slice(5).map(item => (
-              <button key={item.id} className={`nav-item ${section === item.id ? 'active' : ''}`} onClick={() => setSection(item.id)}>
+              <button key={item.id} className={`nav-item ${section === item.id ? 'active' : ''}`} onClick={() => goTo(item.id)}>
                 <span className="nav-icon">{item.icon}</span>
                 <span>{item.label}</span>
               </button>
@@ -1500,6 +1570,9 @@ export default function App() {
               <div className="breadcrumb">NoLimitsPay · {titles[section]} · {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
             </div>
             <div className="topbar-right">
+              <button className="hamburger" onClick={() => setSidebarOpen(!sidebarOpen)}>
+                <span /><span /><span />
+              </button>
               <div style={{ fontSize: 11, color: G.muted, fontFamily: 'DM Mono, monospace', padding: '6px 12px', background: G.card, borderRadius: 8, border: `1px solid ${G.border}` }}>
                 <span className="dot pulse" style={{ background: G.green, marginRight: 6 }} />
                 Sistema operativo
