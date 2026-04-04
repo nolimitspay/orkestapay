@@ -1,4 +1,5 @@
 require('dotenv').config();
+const { router: authRouter } = require('./routes/auth');
 const fs = require('fs');
 const path = require('path');
 const dataDir = path.join(__dirname, '../data');
@@ -26,6 +27,7 @@ app.use(express.json());
 db.init();
 
 // ── Routes ────────────────────────────────────
+app.use('/api/auth', authRouter);
 app.use('/api/gateways',       require('./routes/gateways'));
 app.use('/api/payments',       require('./routes/payments'));
 app.use('/api/subscriptions',  require('./routes/subscriptions'));
