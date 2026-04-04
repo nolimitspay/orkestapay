@@ -574,7 +574,7 @@ function Login({ onLogin }) {
     if (!email || !password) { setError('Completa todos los campos'); return; }
     setLoading(true); setError('');
     try {
-      const { data } = await ('https://orkestapay-backend.onrender.com/api/auth/login', { email, password });
+      const { data } = await axios.post('https://orkestapay-backend.onrender.com/api/auth/login', { email, password });
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       onLogin(data.user);
@@ -1485,6 +1485,516 @@ function Webhooks({ showToast }) {
 
 // ── ROOT APP ─────────────────────────────────────────────────────────────────
 
+
+// ── BACKEND URL ──────────────────────────────────────────────────────────────
+const BACKEND = 'https://orkestapay-backend.onrender.com';
+
+// ── SETUP API ────────────────────────────────────────────────────────────────
+const setupApi = {
+  validateStripe: (key) => axios.post(`${BACKEND}/api/setup/validate-stripe`, { secretKey: key }).then(r => r.data),
+  createWebhook: (key) => axios.post(`${BACKEND}/api/setup/create-stripe-webhook`, { secretKey: key, backendUrl: BACKEND }).then(r => r.data),
+  validateSquare: (token, env) => axios.post(`${BACKEND}/api/setup/validate-square`, { accessToken: token, environment: env }).then(r => r.data),
+  getSquareLocations: (token, env) => axios.post(`${BACKEND}/api/setup/square-locations`, { accessToken: token, environment: env }).then(r => r.data),
+  getSettings: () => axios.get(`${BACKEND}/api/setup/settings`).then(r => r.data),
+  saveSettings: (data) => axios.post(`${BACKEND}/api/setup/settings`, data).then(r => r.data),
+  runAiRouting: () => axios.post(`${BACKEND}/api/setup/ai-routing`).then(r => r.data),
+  getAiHistory: () => axios.get(`${BACKEND}/api/setup/ai-history`).then(r => r.data),
+  getFraudStats: () => axios.get(`${BACKEND}/api/setup/fraud-stats`).then(r => r.data),
+  getDailyReport: () => axios.post(`${BACKEND}/api/setup/send-daily-report`).then(r => r.data),
+};
+
+// ── GET STARTED WIZARD ────────────────────────────────────────────────────────
+function GetStarted({ onComplete }) {
+  const [step, setStep] = useState(0);
+  const steps = [
+    { icon: '⬡', title: 'Conecta tu primera pasarela', desc: 'Ve a Pasarelas y conecta Stripe o Square con tu Secret Key. El sistema lo valida automáticamente.', section: 'gateways' },
+    { icon: '👥', title: 'Crea tu primer cliente', desc: 'Añade clientes para que puedan conectar sus propias pasarelas y ver sus ventas.', section: 'clients' },
+    { icon: '◫', title: 'Conecta una tienda Shopify', desc: 'Añade la URL de la tienda para que su checkout use NoLimitsPay.', section: 'shops' },
+    { icon: '⚙', title: 'Configura opciones avanzadas', desc: 'Activa la IA de routing y el detector de fraude en Settings.', section: 'settings' },
+  ];
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: '#00000090', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, backdropFilter: 'blur(6px)' }}>
+      <div style={{ background: G.card, border: `1px solid ${G.borderGold}`, borderRadius: 20, padding: 40, width: 540, maxWidth: '95vw', boxShadow: `0 24px 80px #00000080` }}>
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div style={{ fontSize: 40, marginBottom: 10 }}>👑</div>
+          <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 24, fontWeight: 600, color: G.goldLight, marginBottom: 6 }}>Bienvenido a NoLimitsPay</div>
+          <div style={{ fontSize: 13, color: G.muted, lineHeight: 1.7 }}>Sigue estos 4 pasos para dejarlo todo listo y funcional.</div>
+        </div>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
+          {steps.map((_, i) => <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= step ? G.gold : G.border, transition: 'background 0.3s' }} />)}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+          {steps.map((s, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 16px', background: i === step ? G.goldDim : i < step ? '#16a34a10' : G.black, border: `1px solid ${i === step ? G.borderGold : i < step ? '#16a34a40' : G.border}`, borderRadius: 12 }}>
+              <div style={{ fontSize: 18, width: 36, height: 36, borderRadius: 8, background: i < step ? '#16a34a20' : i === step ? G.goldDim : G.border, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 36px' }}>{i < step ? '✓' : s.icon}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: i === step ? G.goldLight : i < step ? '#16a34a' : G.muted, marginBottom: 3 }}>{s.title}</div>
+                <div style={{ fontSize: 12, color: G.muted, lineHeight: 1.6 }}>{s.desc}</div>
+              </div>
+              {i === step && <button className="btn btn-gold" style={{ fontSize: 11, padding: '6px 12px', whiteSpace: 'nowrap' }} onClick={() => onComplete(s.section)}>{s.title.split(' ')[0]} →</button>}
+              {i < step && <span style={{ fontSize: 18, color: '#16a34a' }}>✓</span>}
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => onComplete(null)}>Cerrar y configurar más tarde</button>
+          {step < steps.length - 1 && <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setStep(s => s + 1)}>Siguiente →</button>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── GATEWAY WIZARD ────────────────────────────────────────────────────────────
+function GatewayWizard({ onSave, onCancel, showToast }) {
+  const [psp, setPsp] = useState('STRIPE');
+  const [step, setStep] = useState(1);
+  const [fields, setFields] = useState({});
+  const [validationResult, setValidationResult] = useState(null);
+  const [webhookResult, setWebhookResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [trafficPct, setTrafficPct] = useState(100);
+  const [gwName, setGwName] = useState('');
+
+  const PSP = {
+    STRIPE: {
+      color: '#635BFF', bg: '#635BFF15', border: '#635BFF40', emoji: '💜', title: 'Stripe',
+      desc: 'La pasarela más popular. Acepta tarjetas, Apple Pay y Google Pay automáticamente.',
+      fields: [
+        { key: 'secretKey', label: 'Secret Key', placeholder: 'sk_live_...', secret: true, howTo: 'dashboard.stripe.com → Developers → API Keys → Secret key', link: 'https://dashboard.stripe.com/apikeys' },
+        { key: 'publishableKey', label: 'Publishable Key', placeholder: 'pk_live_...', secret: false, howTo: 'dashboard.stripe.com → Developers → API Keys → Publishable key', link: 'https://dashboard.stripe.com/apikeys' },
+      ],
+    },
+    SQUARE: {
+      color: '#00B86B', bg: '#00B86B15', border: '#00B86B40', emoji: '🟢', title: 'Square',
+      desc: 'Ideal para negocios físicos y online. Acepta tarjetas y Google Pay.',
+      fields: [
+        { key: 'accessToken', label: 'Access Token', placeholder: 'EAAAxxxxxxxxxx', secret: true, howTo: '1. Ve a developer.squareup.com\n2. Inicia sesión y clic en "My Applications"\n3. Selecciona tu app → "Credentials"\n4. Copia el "Production Access Token"', link: 'https://developer.squareup.com/apps' },
+        { key: 'locationId', label: 'Location ID', placeholder: 'LXXXXXXXXX', howTo: 'Square Dashboard → Locations → copia el ID de tu ubicación' },
+      ],
+    },
+    TAILORED: {
+      color: '#FF6B35', bg: '#FF6B3515', border: '#FF6B3540', emoji: '🔶', title: 'TailoredPayments',
+      desc: 'Pasarela especializada para alto volumen.',
+      fields: [
+        { key: 'apiKey', label: 'API Key', placeholder: 'tp_live_...', secret: true, howTo: 'Dashboard de TailoredPayments → Settings → API Keys' },
+        { key: 'merchantId', label: 'Merchant ID', placeholder: 'MERCHANT_xxx', howTo: 'Dashboard de TailoredPayments → Account → Merchant ID' },
+        { key: 'baseUrl', label: 'Base URL', placeholder: 'https://api.tailoredpayments.com/v1', howTo: 'Tu gestor de TailoredPayments te la proporciona' },
+      ],
+    },
+  };
+
+  const info = PSP[psp];
+
+  const validate = async () => {
+    setLoading(true);
+    setStep(3);
+    try {
+      if (psp === 'STRIPE') {
+        const val = await setupApi.validateStripe(fields.secretKey);
+        setValidationResult(val);
+        if (!val.valid) { showToast(val.error, 'error'); setStep(2); setLoading(false); return; }
+        const wh = await setupApi.createWebhook(fields.secretKey);
+        setWebhookResult(wh);
+        await gatewaysApi.create({ name: gwName || `Stripe - ${val.account?.name || val.account?.email}`, psp: 'STRIPE', trafficPct, active: true, credentials: { secretKey: fields.secretKey, publishableKey: fields.publishableKey, webhookSecret: wh.webhookSecret || '' } });
+      } else if (psp === 'SQUARE') {
+        const val = await setupApi.validateSquare(fields.accessToken, 'production');
+        setValidationResult(val);
+        if (!val.valid) { showToast(val.error, 'error'); setStep(2); setLoading(false); return; }
+        await gatewaysApi.create({ name: gwName || `Square - ${val.merchant?.name}`, psp: 'SQUARE', trafficPct, active: true, credentials: { accessToken: fields.accessToken, locationId: fields.locationId, environment: 'production' } });
+      } else {
+        await gatewaysApi.create({ name: gwName || `TailoredPayments - ${fields.merchantId}`, psp: 'TAILORED', trafficPct, active: true, credentials: { apiKey: fields.apiKey, merchantId: fields.merchantId, baseUrl: fields.baseUrl || 'https://api.tailoredpayments.com/v1' } });
+        setValidationResult({ valid: true });
+      }
+      setStep(4);
+    } catch (e) {
+      showToast(e.response?.data?.error || e.message, 'error');
+      setStep(2);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ background: G.card, border: `1px solid ${G.borderGold}`, borderRadius: 16, overflow: 'hidden' }}>
+      {step === 1 && (
+        <div style={{ padding: 28 }}>
+          <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 20, fontWeight: 600, color: G.white, marginBottom: 20 }}>Conectar nueva pasarela de pago</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
+            {Object.entries(PSP).map(([key, p]) => (
+              <button key={key} onClick={() => setPsp(key)} style={{ background: psp === key ? p.bg : G.black, border: `1px solid ${psp === key ? p.border : G.border}`, borderRadius: 12, padding: '18px 14px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <div style={{ fontSize: 28 }}>{p.emoji}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: psp === key ? p.color : G.white }}>{p.title}</div>
+                <div style={{ fontSize: 10, color: G.muted, textAlign: 'center', lineHeight: 1.4 }}>{p.desc}</div>
+              </button>
+            ))}
+          </div>
+          <div className="form-group">
+            <label className="form-label">Nombre (opcional)</label>
+            <input className="form-input" placeholder={`ej: ${info.title} - cuenta principal`} value={gwName} onChange={e => setGwName(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">% de tráfico</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <input type="range" min={0} max={100} value={trafficPct} onChange={e => setTrafficPct(+e.target.value)} style={{ flex: 1 }} />
+              <span className="mono" style={{ color: G.goldLight, minWidth: 36 }}>{trafficPct}%</span>
+            </div>
+            <div style={{ fontSize: 11, color: G.muted, marginTop: 4 }}>Si es la única pasarela, ponlo al 100%.</div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+            <button className="btn btn-ghost" onClick={onCancel}>Cancelar</button>
+            <button className="btn btn-gold" onClick={() => setStep(2)}>Siguiente: Introducir claves →</button>
+          </div>
+        </div>
+      )}
+
+      {step === 2 && (
+        <div style={{ padding: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => setStep(1)}>← Atrás</button>
+            <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 18, fontWeight: 600, color: info.color }}>{info.emoji} Conectar {info.title}</div>
+          </div>
+          {info.fields.map(f => (
+            <div key={f.key} style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: G.white, marginBottom: 6 }}>{f.label}</div>
+              {f.howTo && (
+                <div style={{ background: G.black, border: `1px solid ${G.border}`, borderRadius: 8, padding: 12, marginBottom: 8 }}>
+                  <div style={{ fontSize: 10, color: G.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4, fontFamily: 'DM Mono, monospace' }}>📍 Cómo encontrarla:</div>
+                  <div style={{ fontSize: 12, color: G.dim, lineHeight: 1.7, fontFamily: 'DM Mono, monospace', whiteSpace: 'pre-line' }}>{f.howTo}</div>
+                  {f.link && <a href={f.link} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 6, fontSize: 12, color: info.color, textDecoration: 'none', fontWeight: 600 }}>Abrir {info.title} →</a>}
+                </div>
+              )}
+              <input type={f.secret ? 'password' : 'text'} className="form-input" placeholder={f.placeholder} value={fields[f.key] || ''} onChange={e => setFields(p => ({ ...p, [f.key]: e.target.value }))} />
+            </div>
+          ))}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <button className="btn btn-ghost" onClick={onCancel}>Cancelar</button>
+            <button className="btn btn-gold" onClick={validate} disabled={loading}>{loading ? '⏳ Validando...' : `✓ Validar y conectar ${info.title}`}</button>
+          </div>
+        </div>
+      )}
+
+      {step === 3 && (
+        <div style={{ padding: 48, textAlign: 'center' }}>
+          <div style={{ fontSize: 48, marginBottom: 16, animation: 'spin 1s linear infinite', display: 'inline-block' }}>◌</div>
+          <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 20, color: G.goldLight, marginBottom: 8 }}>Conectando {info.title}...</div>
+          <div style={{ fontSize: 13, color: G.muted }}>{psp === 'STRIPE' ? 'Validando clave y creando webhook automáticamente...' : 'Verificando credenciales...'}</div>
+        </div>
+      )}
+
+      {step === 4 && (
+        <div style={{ padding: 40, textAlign: 'center' }}>
+          <div style={{ fontSize: 56, marginBottom: 16 }}>✅</div>
+          <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 22, color: G.goldLight, marginBottom: 12 }}>{info.title} conectado correctamente</div>
+          {validationResult?.account && (
+            <div style={{ background: G.black, border: `1px solid ${info.border}`, borderRadius: 12, padding: 16, marginBottom: 16, textAlign: 'left' }}>
+              {[{ k: 'Nombre', v: validationResult.account.name }, { k: 'Email', v: validationResult.account.email }, { k: 'Cobros activos', v: validationResult.account.chargesEnabled ? '✓ Sí' : '⚠ Activa tu cuenta Stripe' }].map((r, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontSize: 12, borderBottom: `1px solid ${G.border}20` }}>
+                  <span style={{ color: G.muted }}>{r.k}</span><span style={{ color: G.white, fontWeight: 600 }}>{r.v || '—'}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {webhookResult?.success && <div style={{ background: '#16a34a10', border: '1px solid #16a34a40', borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12, color: '#16a34a', textAlign: 'left' }}><div style={{ fontWeight: 700, marginBottom: 4 }}>✓ Webhook creado automáticamente</div><div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: G.muted }}>{webhookResult.alreadyExisted ? 'Ya estaba configurado' : `ID: ${webhookResult.webhookId}`}</div></div>}
+          <button className="btn btn-gold" style={{ width: '100%' }} onClick={onSave}>Ir al dashboard →</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── GATEWAYS WITH WIZARD ──────────────────────────────────────────────────────
+function GatewaysNew({ showToast }) {
+  const [gateways, setGateways] = useState([]);
+  const [showWizard, setShowWizard] = useState(false);
+  const load = useCallback(() => { gatewaysApi.getAll().then(setGateways).catch(() => setGateways([])); }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const toggle = (gw) => { gatewaysApi.update(gw.id, { active: !gw.active }).then(u => { setGateways(prev => prev.map(g => g.id === gw.id ? u : g)); showToast(`Pasarela ${u.active ? 'activada' : 'pausada'}`, 'success'); }); };
+  const remove = (id) => { if (!window.confirm('¿Eliminar?')) return; gatewaysApi.delete(id).then(() => { setGateways(prev => prev.filter(g => g.id !== id)); showToast('Eliminada', 'info'); }); };
+
+  return (
+    <div className="content">
+      {showWizard ? (
+        <GatewayWizard showToast={showToast} onSave={() => { setShowWizard(false); load(); showToast('Pasarela conectada ✓', 'success'); }} onCancel={() => setShowWizard(false)} />
+      ) : (
+        <>
+          {gateways.length === 0 && (
+            <div style={{ background: G.goldDim, border: `1px solid ${G.borderGold}`, borderRadius: 14, padding: 28, marginBottom: 24, textAlign: 'center' }}>
+              <div style={{ fontSize: 36, marginBottom: 12 }}>⬡</div>
+              <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 18, color: G.goldLight, marginBottom: 8 }}>Sin pasarelas configuradas</div>
+              <div style={{ fontSize: 13, color: G.muted, marginBottom: 16 }}>Conecta tu primera pasarela para empezar a recibir pagos.</div>
+              <button className="btn btn-gold" onClick={() => setShowWizard(true)}>+ Conectar primera pasarela</button>
+            </div>
+          )}
+          {gateways.length > 0 && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+                <button className="btn btn-gold" onClick={() => setShowWizard(true)}>+ Añadir pasarela</button>
+              </div>
+              <div className="card">
+                <div className="table-wrap">
+                  <table>
+                    <thead><tr><th>Nombre</th><th>PSP</th><th>Tráfico</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <tbody>
+                      {gateways.map(g => (
+                        <tr key={g.id}>
+                          <td style={{ fontWeight: 600 }}>{g.name}</td>
+                          <td><span className={`badge ${g.psp === 'STRIPE' ? 'badge-blue' : g.psp === 'SQUARE' ? 'badge-gold' : 'badge-green'}`}>{g.psp}</span></td>
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div className="progress" style={{ width: 80 }}><div className="progress-fill" style={{ width: `${g.trafficPct || 0}%` }} /></div>
+                              <span className="mono" style={{ fontSize: 13, color: G.goldLight }}>{g.trafficPct || 0}%</span>
+                            </div>
+                          </td>
+                          <td><StatusBadge status={g.active ? 'ACTIVE' : 'INACTIVE'} /></td>
+                          <td>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button className="btn btn-ghost btn-sm" onClick={() => toggle(g)}>{g.active ? 'Pausar' : 'Activar'}</button>
+                              <button className="btn btn-danger btn-sm" onClick={() => remove(g.id)}>Eliminar</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── CLIENTS ───────────────────────────────────────────────────────────────────
+function Clients({ showToast }) {
+  const [clients, setClients] = useState([]);
+  const [modal, setModal] = useState(null);
+  const [selected, setSelected] = useState(null);
+  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [planForm, setPlanForm] = useState({ name: 'Plan Básico', price: '', delayDays: 30, interval: 'month' });
+
+  const load = useCallback(() => { setClients(JSON.parse(localStorage.getItem('nlp_clients') || '[]')); }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const save = (updated) => { localStorage.setItem('nlp_clients', JSON.stringify(updated)); setClients(updated); };
+
+  const createClient = () => {
+    if (!form.email || !form.password || !form.name) { showToast('Completa todos los campos', 'error'); return; }
+    save([...clients, { id: Date.now().toString(), ...form, createdAt: new Date().toISOString(), plan: planForm.price ? planForm : null }]);
+    setModal(null); setForm({ name: '', email: '', password: '' }); setPlanForm({ name: 'Plan Básico', price: '', delayDays: 30, interval: 'month' });
+    showToast('Cliente creado ✓', 'success');
+  };
+
+  const savePlan = () => { save(clients.map(c => c.id === selected.id ? { ...c, plan: planForm } : c)); setModal(null); showToast('Plan asignado ✓', 'success'); };
+  const deleteClient = (id) => { if (!window.confirm('¿Eliminar?')) return; save(clients.filter(c => c.id !== id)); showToast('Eliminado', 'info'); };
+
+  return (
+    <div className="content">
+      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 20 }}>
+        {[{ label: 'Clientes totales', value: clients.length }, { label: 'Con plan activo', value: clients.filter(c => c.plan).length }, { label: 'Sin plan', value: clients.filter(c => !c.plan).length }].map((k, i) => (
+          <div key={i} className="kpi-card"><div className="kpi-label">{k.label}</div><div className="kpi-value" style={{ fontSize: 28 }}>{k.value}</div></div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+        <button className="btn btn-gold" onClick={() => setModal('create')}>+ Nuevo cliente</button>
+      </div>
+      <div className="card">
+        {clients.length === 0 ? <div className="empty"><div className="empty-icon">👥</div>Sin clientes. Crea el primero.</div> : (
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Cliente</th><th>Email</th><th>Plan</th><th>Alta</th><th>Acciones</th></tr></thead>
+              <tbody>
+                {clients.map(c => (
+                  <tr key={c.id}>
+                    <td><div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><div style={{ width: 30, height: 30, borderRadius: '50%', background: G.goldDim, border: `1px solid ${G.borderGold}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: G.goldLight }}>{c.name?.[0]?.toUpperCase()}</div><span style={{ fontWeight: 600, fontSize: 13 }}>{c.name}</span></div></td>
+                    <td style={{ fontSize: 12, color: G.dim, fontFamily: 'DM Mono, monospace' }}>{c.email}</td>
+                    <td>{c.plan ? <div><div style={{ fontSize: 12, fontWeight: 600, color: G.goldLight }}>€{c.plan.price}/{c.plan.interval === 'month' ? 'mes' : c.plan.interval}</div><div style={{ fontSize: 10, color: G.muted, fontFamily: 'DM Mono, monospace' }}>Delay: {c.plan.delayDays}d</div></div> : <span className="badge badge-gray">Sin plan</span>}</td>
+                    <td style={{ fontSize: 11, color: G.muted, fontFamily: 'DM Mono, monospace' }}>{c.createdAt ? new Date(c.createdAt).toLocaleDateString('es-ES') : '—'}</td>
+                    <td><div style={{ display: 'flex', gap: 8 }}><button className="btn btn-ghost btn-sm" onClick={() => { setSelected(c); setPlanForm(c.plan || { name: 'Plan Básico', price: '', delayDays: 30, interval: 'month' }); setModal('plan'); }}>↺ Plan</button><button className="btn btn-danger btn-sm" onClick={() => deleteClient(c.id)}>Eliminar</button></div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {modal === 'create' && (
+        <Modal title="Nuevo cliente" onClose={() => setModal(null)}>
+          <div className="form-group"><label className="form-label">Nombre completo</label><input className="form-input" placeholder="Juan García" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></div>
+          <div className="form-group"><label className="form-label">Email</label><input type="email" className="form-input" placeholder="juan@empresa.com" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></div>
+          <div className="form-group"><label className="form-label">Contraseña inicial</label><input type="password" className="form-input" placeholder="mínimo 8 caracteres" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} /></div>
+          <div style={{ background: G.goldDim, border: `1px solid ${G.borderGold}`, borderRadius: 10, padding: 16, marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: G.goldLight, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.1em' }}>↺ Plan de suscripción (opcional)</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="form-group" style={{ marginBottom: 0 }}><label className="form-label">Precio (€/mes)</label><input type="number" className="form-input" placeholder="29.99" value={planForm.price} onChange={e => setPlanForm(p => ({ ...p, price: e.target.value }))} /></div>
+              <div className="form-group" style={{ marginBottom: 0 }}><label className="form-label">Días hasta primer cobro</label><input type="number" className="form-input" placeholder="30" value={planForm.delayDays} onChange={e => setPlanForm(p => ({ ...p, delayDays: +e.target.value }))} /></div>
+            </div>
+            <div style={{ fontSize: 11, color: G.muted, marginTop: 8, fontFamily: 'DM Mono, monospace' }}>Cliente paga producto → a los {planForm.delayDays || 30} días se le cobra €{planForm.price || 'X'}/mes</div>
+          </div>
+          <div className="modal-actions"><button className="btn btn-ghost" onClick={() => setModal(null)}>Cancelar</button><button className="btn btn-gold" onClick={createClient}>Crear cliente</button></div>
+        </Modal>
+      )}
+
+      {modal === 'plan' && selected && (
+        <Modal title={`Plan — ${selected.name}`} onClose={() => setModal(null)}>
+          <div className="form-group"><label className="form-label">Nombre del plan</label><input className="form-input" placeholder="Plan Pro" value={planForm.name} onChange={e => setPlanForm(p => ({ ...p, name: e.target.value }))} /></div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-group"><label className="form-label">Precio (€)</label><input type="number" className="form-input" placeholder="29.99" value={planForm.price} onChange={e => setPlanForm(p => ({ ...p, price: e.target.value }))} /></div>
+            <div className="form-group"><label className="form-label">Intervalo</label><select className="form-input" value={planForm.interval} onChange={e => setPlanForm(p => ({ ...p, interval: e.target.value }))}><option value="day">Diario</option><option value="week">Semanal</option><option value="month">Mensual</option><option value="year">Anual</option></select></div>
+          </div>
+          <div className="form-group"><label className="form-label">Días tras primer pago hasta cobrar suscripción</label><input type="number" className="form-input" placeholder="30" value={planForm.delayDays} onChange={e => setPlanForm(p => ({ ...p, delayDays: +e.target.value }))} /></div>
+          <div style={{ background: G.goldDim, border: `1px solid ${G.borderGold}`, borderRadius: 10, padding: 12, fontSize: 12, color: G.goldLight, lineHeight: 1.8 }}>
+            ✦ Cliente paga producto → a los {planForm.delayDays || 30} días se le cobra €{planForm.price || 'X'} → luego cada {planForm.interval === 'month' ? 'mes' : planForm.interval}
+          </div>
+          <div className="modal-actions"><button className="btn btn-ghost" onClick={() => setModal(null)}>Cancelar</button><button className="btn btn-gold" onClick={savePlan}>Guardar plan</button></div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ── SETTINGS ──────────────────────────────────────────────────────────────────
+function Settings({ showToast }) {
+  const [settings, setSettings] = useState({ aiRouting: { enabled: false }, fraudSettings: { enabled: true, maxAttemptsPerIp: 3, maxAmountPerIp: 50000, blockDisposableEmails: true }, dailyReport: { enabled: false, hour: 23 }, routing: 'percentage', retryAttempts: 3 });
+  const [tab, setTab] = useState('ai');
+  const [aiHistory, setAiHistory] = useState([]);
+  const [fraudStats, setFraudStats] = useState(null);
+  const [runningAi, setRunningAi] = useState(false);
+
+  useEffect(() => {
+    setupApi.getSettings().then(setSettings).catch(() => {});
+    setupApi.getAiHistory().then(setAiHistory).catch(() => {});
+    setupApi.getFraudStats().then(setFraudStats).catch(() => {});
+  }, []);
+
+  const save = async (newSettings) => {
+    setSettings(newSettings);
+    try { await setupApi.saveSettings(newSettings); showToast('Guardado ✓', 'success'); } catch { showToast('Error guardando', 'error'); }
+  };
+
+  const runAi = async () => {
+    setRunningAi(true);
+    try { const r = await setupApi.runAiRouting(); showToast(r.message || 'IA ejecutada', 'success'); setupApi.getAiHistory().then(setAiHistory); } catch (e) { showToast(e.message, 'error'); }
+    setRunningAi(false);
+  };
+
+  return (
+    <div className="content">
+      <div className="section-tabs" style={{ marginBottom: 24 }}>
+        {[{ id: 'ai', label: '🤖 IA Routing' }, { id: 'fraud', label: '🛡️ Detector de fraude' }, { id: 'report', label: '📊 Informe diario' }, { id: 'general', label: '⚙ General' }].map(t => (
+          <button key={t.id} className={`section-tab ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>{t.label}</button>
+        ))}
+      </div>
+
+      {tab === 'ai' && (
+        <div className="card">
+          <div className="card-head">
+            <span className="card-title">🤖 IA de routing inteligente</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 12, color: settings.aiRouting?.enabled ? G.green : G.muted }}>{settings.aiRouting?.enabled ? '● Activa' : '○ Inactiva'}</span>
+              <button className={`btn ${settings.aiRouting?.enabled ? 'btn-danger' : 'btn-gold'} btn-sm`} onClick={() => save({ ...settings, aiRouting: { ...settings.aiRouting, enabled: !settings.aiRouting?.enabled } })}>{settings.aiRouting?.enabled ? 'Desactivar' : 'Activar IA'}</button>
+            </div>
+          </div>
+          <div className="card-body">
+            <div style={{ fontSize: 13, color: G.muted, lineHeight: 1.8, marginBottom: 16 }}>Cuando está <strong style={{ color: G.white }}>activa</strong>, la IA analiza la tasa de éxito de cada pasarela en los últimos 7 días y ajusta automáticamente los porcentajes de tráfico.<br/>Cuando está <strong style={{ color: G.white }}>inactiva</strong>, los porcentajes que configures manualmente se respetan al 100%.</div>
+            {settings.aiRouting?.enabled && <button className="btn btn-ghost btn-sm" onClick={runAi} disabled={runningAi} style={{ marginBottom: 16 }}>{runningAi ? '⏳ Ejecutando...' : '▶ Ejecutar IA ahora'}</button>}
+            {aiHistory.length === 0 && <div className="empty"><div className="empty-icon" style={{ fontSize: 24 }}>🤖</div>La IA necesita al menos 10 transacciones para empezar a optimizar.</div>}
+            {aiHistory.slice(0, 5).map((h, i) => (
+              <div key={i} style={{ background: G.black, border: `1px solid ${G.border}`, borderRadius: 10, padding: 12, marginBottom: 8 }}>
+                <div style={{ fontSize: 11, color: G.muted, fontFamily: 'DM Mono, monospace', marginBottom: 6 }}>{new Date(h.timestamp).toLocaleString('es-ES')}</div>
+                {h.decisions?.map((d, j) => <div key={j} style={{ fontSize: 12, color: G.dim }}><span style={{ color: G.goldLight, fontWeight: 600 }}>{d.gateway}</span>: {d.oldPct}% → <span style={{ color: G.green }}>{d.newPct}%</span> <span style={{ color: G.muted }}>({d.reason})</span></div>)}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {tab === 'fraud' && (
+        <div className="card">
+          <div className="card-head">
+            <span className="card-title">🛡️ Detector de fraude</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 12, color: settings.fraudSettings?.enabled ? G.green : G.muted }}>{settings.fraudSettings?.enabled ? '● Activo' : '○ Inactivo'}</span>
+              <button className={`btn ${settings.fraudSettings?.enabled ? 'btn-danger' : 'btn-gold'} btn-sm`} onClick={() => save({ ...settings, fraudSettings: { ...settings.fraudSettings, enabled: !settings.fraudSettings?.enabled } })}>{settings.fraudSettings?.enabled ? 'Desactivar' : 'Activar'}</button>
+            </div>
+          </div>
+          <div className="card-body">
+            {fraudStats && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
+                {[{ label: 'Intentos hoy', value: fraudStats.totalToday || 0, color: G.white }, { label: 'Bloqueados', value: fraudStats.blockedToday || 0, color: G.red }, { label: 'Permitidos', value: fraudStats.allowedToday || 0, color: G.green }].map((s, i) => (
+                  <div key={i} className="kpi-card" style={{ padding: 14 }}><div className="kpi-label">{s.label}</div><div className="kpi-value" style={{ fontSize: 22, color: s.color }}>{s.value}</div></div>
+                ))}
+              </div>
+            )}
+            {[{ key: 'maxAttemptsPerIp', label: 'Máx. intentos por IP/hora', type: 'number', desc: 'Bloquea IPs que intenten más de X pagos por hora' }, { key: 'blockDisposableEmails', label: 'Bloquear emails desechables', type: 'toggle', desc: 'Bloquea mailinator, tempmail, yopmail, etc.' }].map(rule => (
+              <div key={rule.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: `1px solid ${G.border}20` }}>
+                <div><div style={{ fontSize: 13, fontWeight: 600 }}>{rule.label}</div><div style={{ fontSize: 11, color: G.muted, marginTop: 2 }}>{rule.desc}</div></div>
+                {rule.type === 'toggle' ? (
+                  <button className={`btn ${settings.fraudSettings?.[rule.key] ? 'btn-gold' : 'btn-ghost'} btn-sm`} onClick={() => save({ ...settings, fraudSettings: { ...settings.fraudSettings, [rule.key]: !settings.fraudSettings?.[rule.key] } })}>{settings.fraudSettings?.[rule.key] ? '✓ ON' : 'OFF'}</button>
+                ) : (
+                  <input type="number" className="form-input" style={{ width: 80, fontSize: 13 }} value={settings.fraudSettings?.[rule.key] || ''} onChange={e => save({ ...settings, fraudSettings: { ...settings.fraudSettings, [rule.key]: +e.target.value } })} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {tab === 'report' && (
+        <div className="card">
+          <div className="card-head">
+            <span className="card-title">📊 Informe diario por email</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 12, color: settings.dailyReport?.enabled ? G.green : G.muted }}>{settings.dailyReport?.enabled ? '● Activo' : '○ Inactivo'}</span>
+              <button className={`btn ${settings.dailyReport?.enabled ? 'btn-danger' : 'btn-gold'} btn-sm`} onClick={() => save({ ...settings, dailyReport: { ...settings.dailyReport, enabled: !settings.dailyReport?.enabled } })}>{settings.dailyReport?.enabled ? 'Desactivar' : 'Activar'}</button>
+            </div>
+          </div>
+          <div className="card-body">
+            <div style={{ fontSize: 13, color: G.muted, lineHeight: 1.8, marginBottom: 16 }}>Cada día a la hora configurada, el sistema enviará automáticamente un informe con el resumen de pagos, revenue por pasarela y tasa de conversión al email de cada cliente.</div>
+            <div style={{ background: '#ea580c15', border: '1px solid #ea580c40', borderRadius: 10, padding: 14, marginBottom: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#ea580c', marginBottom: 6 }}>⚠️ Necesitas configurar el SMTP en Render</div>
+              <div style={{ fontSize: 12, color: G.muted, fontFamily: 'DM Mono, monospace', lineHeight: 1.8 }}>SMTP_HOST=smtp.gmail.com<br/>SMTP_PORT=587<br/>SMTP_USER=tu@gmail.com<br/>SMTP_PASS=tu_app_password</div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Hora de envío</label>
+              <select className="form-input" value={settings.dailyReport?.hour || 23} onChange={e => save({ ...settings, dailyReport: { ...settings.dailyReport, hour: +e.target.value } })}>
+                {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>)}
+              </select>
+            </div>
+            <button className="btn btn-ghost btn-sm" onClick={() => { setupApi.getDailyReport().then(() => showToast('Informe generado ✓', 'success')).catch(e => showToast(e.message, 'error')); }}>📊 Generar informe ahora</button>
+          </div>
+        </div>
+      )}
+
+      {tab === 'general' && (
+        <div className="card">
+          <div className="card-head"><span className="card-title">⚙ Configuración general</span></div>
+          <div className="card-body">
+            <div className="form-group">
+              <label className="form-label">Estrategia de routing</label>
+              <select className="form-input" value={settings.routing || 'percentage'} onChange={e => save({ ...settings, routing: e.target.value })}>
+                <option value="percentage">Por porcentaje (recomendado)</option>
+                <option value="priority">Por prioridad</option>
+                <option value="round_robin">Round robin</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Máximo de reintentos por pago fallido</label>
+              <input type="number" className="form-input" min={1} max={5} value={settings.retryAttempts || 3} onChange={e => save({ ...settings, retryAttempts: +e.target.value })} />
+              <div style={{ fontSize: 11, color: G.muted, marginTop: 4 }}>Si un pago falla, el sistema lo reintenta con otra pasarela hasta este número de veces.</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── ROOT APP ──────────────────────────────────────────────────────────────────
 export default function App() {
   const [user, setUser] = useState(() => {
     try { const s = localStorage.getItem('user'); return s ? JSON.parse(s) : null; } catch { return null; }
@@ -1492,77 +2002,80 @@ export default function App() {
   const [section, setSection] = useState('dashboard');
   const [toast, setToast] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showGetStarted, setShowGetStarted] = useState(false);
   const showToast = useCallback((msg, type = 'success') => setToast({ msg, type }), []);
 
-  const goTo = (id) => { setSection(id); setSidebarOpen(false); };
+  useEffect(() => {
+    if (user && user.role === 'admin' && !localStorage.getItem('nlp_gs_seen')) {
+      setShowGetStarted(true);
+    }
+  }, [user]);
+
+  const goTo = (sec) => {
+    setSidebarOpen(false);
+    if (sec) setSection(sec);
+    setShowGetStarted(false);
+    localStorage.setItem('nlp_gs_seen', '1');
+  };
 
   if (!user) return <Login onLogin={setUser} />;
 
   const navItems = [
     { id: 'dashboard', icon: '◈', label: 'Dashboard' },
+    { id: 'clients', icon: '👥', label: 'Clientes', badge: JSON.parse(localStorage.getItem('nlp_clients') || '[]').length },
     { id: 'payments', icon: '◎', label: 'Pagos' },
     { id: 'subscriptions', icon: '↺', label: 'Suscripciones' },
     { id: 'batch', icon: '⊞', label: 'Batch Payment' },
     { id: 'gateways', icon: '⬡', label: 'Pasarelas' },
+    { id: 'settings', icon: '⚙', label: 'Settings' },
     { id: 'webhooks', icon: '⊕', label: 'Webhooks' },
     { id: 'shops', icon: '◫', label: 'Tiendas' },
     { id: 'pixels', icon: '◉', label: 'Pixels' },
     { id: 'templates', icon: '◻', label: 'Email Templates' },
   ];
 
-  const titles = {
-    dashboard: 'Dashboard', payments: 'Pagos', subscriptions: 'Suscripciones',
-    batch: 'Batch Payment', gateways: 'Pasarelas de pago', webhooks: 'Webhooks',
-    shops: 'Tiendas Shopify', pixels: 'Pixel Manager', templates: 'Email Templates',
-  };
-
-  const logout = () => { localStorage.clear(); setUser(null); };
+  const titles = { dashboard: 'Dashboard', clients: 'Clientes', payments: 'Pagos', subscriptions: 'Suscripciones', batch: 'Batch Payment', gateways: 'Pasarelas', settings: 'Settings', webhooks: 'Webhooks', shops: 'Tiendas', pixels: 'Pixels', templates: 'Email Templates' };
 
   return (
     <>
       <style>{css}</style>
+      {showGetStarted && <GetStarted onComplete={goTo} />}
       <div className="layout">
-        {/* SIDEBAR */}
-        <div className={`sidebar-overlay ${sidebarOpen ? "open" : ""}`} onClick={() => setSidebarOpen(false)} />
-        <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
+        <div className={`sidebar-overlay ${sidebarOpen ? 'open' : ''}`} onClick={() => setSidebarOpen(false)} />
+        <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
           <div className="sidebar-top">
             <div className="logo-wrap">
               <div className="logo-icon">N</div>
-              <div>
-                <div className="logo-name">NoLimitsPay</div>
-                <div className="logo-sub">Orchestrator</div>
-              </div>
+              <div><div className="logo-name">NoLimitsPay</div><div className="logo-sub">Admin Panel</div></div>
             </div>
           </div>
-
           <nav className="nav">
             <div className="nav-section-label">Principal</div>
-            {navItems.slice(0, 5).map(item => (
+            {navItems.slice(0, 7).map(item => (
               <button key={item.id} className={`nav-item ${section === item.id ? 'active' : ''}`} onClick={() => goTo(item.id)}>
                 <span className="nav-icon">{item.icon}</span>
                 <span>{item.label}</span>
+                {item.badge > 0 && <span className="nav-badge">{item.badge}</span>}
               </button>
             ))}
             <div className="nav-section-label" style={{ marginTop: 8 }}>Integraciones</div>
-            {navItems.slice(5).map(item => (
+            {navItems.slice(7).map(item => (
               <button key={item.id} className={`nav-item ${section === item.id ? 'active' : ''}`} onClick={() => goTo(item.id)}>
-                <span className="nav-icon">{item.icon}</span>
-                <span>{item.label}</span>
+                <span className="nav-icon">{item.icon}</span><span>{item.label}</span>
               </button>
             ))}
+            <div style={{ marginTop: 12, padding: '0 4px' }}>
+              <button className="btn btn-ghost" style={{ width: '100%', fontSize: 11, gap: 6 }} onClick={() => { localStorage.removeItem('nlp_gs_seen'); setShowGetStarted(true); }}>
+                👋 Ver Get Started
+              </button>
+            </div>
           </nav>
-
           <div className="sidebar-user">
             <div className="user-avatar">{user.name?.[0]?.toUpperCase() || 'A'}</div>
-            <div>
-              <div className="user-name">{user.name || 'Admin'}</div>
-              <div className="user-role">{user.role === 'admin' ? '★ Administrador' : 'Usuario'}</div>
-            </div>
-            <button className="logout-btn" onClick={logout} title="Cerrar sesión">⏻</button>
+            <div><div className="user-name">{user.name || 'Admin'}</div><div className="user-role">★ Administrador</div></div>
+            <button className="logout-btn" onClick={() => { localStorage.clear(); setUser(null); }} title="Cerrar sesión">⏻</button>
           </div>
         </aside>
-
-        {/* MAIN */}
         <main className="main">
           <div className="topbar">
             <div>
@@ -1570,66 +2083,25 @@ export default function App() {
               <div className="breadcrumb">NoLimitsPay · {titles[section]} · {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
             </div>
             <div className="topbar-right">
-              <button className="hamburger" onClick={() => setSidebarOpen(!sidebarOpen)}>
-                <span /><span /><span />
-              </button>
+              <button className="hamburger" onClick={() => setSidebarOpen(!sidebarOpen)}><span /><span /><span /></button>
               <div style={{ fontSize: 11, color: G.muted, fontFamily: 'DM Mono, monospace', padding: '6px 12px', background: G.card, borderRadius: 8, border: `1px solid ${G.border}` }}>
-                <span className="dot pulse" style={{ background: G.green, marginRight: 6 }} />
-                Sistema operativo
+                <span className="dot pulse" style={{ background: G.green, marginRight: 6 }} />Sistema operativo
               </div>
             </div>
           </div>
-
           {section === 'dashboard' && <Dashboard showToast={showToast} />}
+          {section === 'clients' && <Clients showToast={showToast} />}
           {section === 'payments' && <Payments showToast={showToast} />}
           {section === 'subscriptions' && <Subscriptions showToast={showToast} />}
           {section === 'batch' && <BatchPayment showToast={showToast} />}
-          {section === 'gateways' && <Gateways showToast={showToast} />}
+          {section === 'gateways' && <GatewaysNew showToast={showToast} />}
+          {section === 'settings' && <Settings showToast={showToast} />}
           {section === 'webhooks' && <Webhooks showToast={showToast} />}
-          {section === 'shops' && (
-            <SimpleList showToast={showToast} apiObj={shopsApi} title="Nueva tienda Shopify"
-              columns={[
-                { key: 'name', label: 'Nombre' },
-                { key: 'url', label: 'URL Shopify', render: v => <span className="mono" style={{ fontSize: 11, color: G.dim }}>{v}</span> },
-                { key: 'active', label: 'Estado', render: v => <StatusBadge status={v ? 'ACTIVE' : 'INACTIVE'} /> }
-              ]}
-              createFields={[
-                { key: 'name', label: 'Nombre de la tienda', placeholder: 'Mi Tienda' },
-                { key: 'url', label: 'URL Shopify', placeholder: 'mitienda.myshopify.com' }
-              ]}
-            />
-          )}
-          {section === 'pixels' && (
-            <SimpleList showToast={showToast} apiObj={pixelsApi} title="Nuevo pixel"
-              columns={[
-                { key: 'provider', label: 'Proveedor', render: v => <span className={`badge ${v === 'META' ? 'badge-blue' : v === 'TIKTOK' ? 'badge-red' : 'badge-gold'}`}>{v}</span> },
-                { key: 'pixelId', label: 'Pixel ID', render: v => <span className="mono" style={{ fontSize: 11 }}>{v}</span> },
-                { key: 'name', label: 'Nombre' },
-              ]}
-              createFields={[
-                { key: 'provider', label: 'Proveedor', type: 'select', options: [{ value: 'META', label: 'Meta (Facebook)' }, { value: 'TIKTOK', label: 'TikTok' }, { value: 'PINTEREST', label: 'Pinterest' }] },
-                { key: 'pixelId', label: 'Pixel ID', placeholder: '1234567890' },
-                { key: 'name', label: 'Nombre', placeholder: 'Pixel principal' },
-              ]}
-            />
-          )}
-          {section === 'templates' && (
-            <SimpleList showToast={showToast} apiObj={templatesApi} title="Nueva plantilla"
-              columns={[
-                { key: 'name', label: 'Nombre' },
-                { key: 'subject', label: 'Asunto', render: v => <span style={{ fontSize: 12, color: G.dim }}>{v}</span> },
-                { key: 'active', label: 'Estado', render: v => <StatusBadge status={v ? 'ACTIVE' : 'INACTIVE'} /> },
-              ]}
-              createFields={[
-                { key: 'name', label: 'Nombre interno', placeholder: 'Cart Recovery' },
-                { key: 'subject', label: 'Asunto del email', placeholder: '¡Tu carrito te espera!' },
-                { key: 'html', label: 'Contenido HTML', placeholder: '<h1>Hola {{name}}</h1>' },
-              ]}
-            />
-          )}
+          {section === 'shops' && <SimpleList showToast={showToast} apiObj={shopsApi} title="Nueva tienda Shopify" columns={[{ key: 'name', label: 'Nombre' }, { key: 'url', label: 'URL', render: v => <span className="mono" style={{ fontSize: 11, color: G.dim }}>{v}</span> }, { key: 'active', label: 'Estado', render: v => <StatusBadge status={v ? 'ACTIVE' : 'INACTIVE'} /> }]} createFields={[{ key: 'name', label: 'Nombre de la tienda', placeholder: 'Mi Tienda' }, { key: 'url', label: 'URL Shopify', placeholder: 'mitienda.myshopify.com' }]} />}
+          {section === 'pixels' && <SimpleList showToast={showToast} apiObj={pixelsApi} title="Nuevo pixel" columns={[{ key: 'provider', label: 'Proveedor', render: v => <span className={`badge ${v === 'META' ? 'badge-blue' : v === 'TIKTOK' ? 'badge-red' : 'badge-gold'}`}>{v}</span> }, { key: 'pixelId', label: 'Pixel ID', render: v => <span className="mono" style={{ fontSize: 11 }}>{v}</span> }, { key: 'name', label: 'Nombre' }]} createFields={[{ key: 'provider', label: 'Proveedor', type: 'select', options: [{ value: 'META', label: 'Meta (Facebook)' }, { value: 'TIKTOK', label: 'TikTok' }, { value: 'PINTEREST', label: 'Pinterest' }] }, { key: 'pixelId', label: 'Pixel ID', placeholder: '1234567890' }, { key: 'name', label: 'Nombre', placeholder: 'Pixel principal' }]} />}
+          {section === 'templates' && <SimpleList showToast={showToast} apiObj={templatesApi} title="Nueva plantilla" columns={[{ key: 'name', label: 'Nombre' }, { key: 'subject', label: 'Asunto', render: v => <span style={{ fontSize: 12, color: G.dim }}>{v}</span> }, { key: 'active', label: 'Estado', render: v => <StatusBadge status={v ? 'ACTIVE' : 'INACTIVE'} /> }]} createFields={[{ key: 'name', label: 'Nombre interno', placeholder: 'Cart Recovery' }, { key: 'subject', label: 'Asunto del email', placeholder: '¡Tu carrito te espera!' }, { key: 'html', label: 'HTML del email', placeholder: '<h1>Hola {{name}}</h1>' }]} />}
         </main>
       </div>
-
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
     </>
   );
