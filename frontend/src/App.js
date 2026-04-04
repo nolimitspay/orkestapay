@@ -1486,67 +1486,168 @@ function Webhooks({ showToast }) {
 // ── ROOT APP ─────────────────────────────────────────────────────────────────
 
 
-// ── BACKEND URL ──────────────────────────────────────────────────────────────
+// ── CONSTANTS ─────────────────────────────────────────────────────────────────
 const BACKEND = 'https://orkestapay-backend.onrender.com';
 
-// ── SETUP API ────────────────────────────────────────────────────────────────
+// ── SETUP API ─────────────────────────────────────────────────────────────────
 const setupApi = {
-  validateStripe: (key) => axios.post(`${BACKEND}/api/setup/validate-stripe`, { secretKey: key }).then(r => r.data),
-  createWebhook: (key) => axios.post(`${BACKEND}/api/setup/create-stripe-webhook`, { secretKey: key, backendUrl: BACKEND }).then(r => r.data),
-  validateSquare: (token, env) => axios.post(`${BACKEND}/api/setup/validate-square`, { accessToken: token, environment: env }).then(r => r.data),
-  getSquareLocations: (token, env) => axios.post(`${BACKEND}/api/setup/square-locations`, { accessToken: token, environment: env }).then(r => r.data),
+  validateStripe: (k) => axios.post(`${BACKEND}/api/setup/validate-stripe`, { secretKey: k }).then(r => r.data),
+  createWebhook: (k) => axios.post(`${BACKEND}/api/setup/create-stripe-webhook`, { secretKey: k, backendUrl: BACKEND }).then(r => r.data),
+  validateSquare: (t, e) => axios.post(`${BACKEND}/api/setup/validate-square`, { accessToken: t, environment: e }).then(r => r.data),
+  getSquareLocations: (t, e) => axios.post(`${BACKEND}/api/setup/square-locations`, { accessToken: t, environment: e }).then(r => r.data),
   getSettings: () => axios.get(`${BACKEND}/api/setup/settings`).then(r => r.data),
-  saveSettings: (data) => axios.post(`${BACKEND}/api/setup/settings`, data).then(r => r.data),
+  saveSettings: (d) => axios.post(`${BACKEND}/api/setup/settings`, d).then(r => r.data),
   runAiRouting: () => axios.post(`${BACKEND}/api/setup/ai-routing`).then(r => r.data),
   getAiHistory: () => axios.get(`${BACKEND}/api/setup/ai-history`).then(r => r.data),
   getFraudStats: () => axios.get(`${BACKEND}/api/setup/fraud-stats`).then(r => r.data),
   getDailyReport: () => axios.post(`${BACKEND}/api/setup/send-daily-report`).then(r => r.data),
 };
 
+// ── PLAN TIERS ────────────────────────────────────────────────────────────────
+const PLAN_TIERS = {
+  bronze: {
+    name: 'Plan Bronce', emoji: '🥉', color: '#CD7F32', bg: '#CD7F3215', border: '#CD7F3240',
+    billing: 'Hasta €10.000/mes', price: 29,
+    features: ['1 pasarela de pago', 'Checkout personalizado', 'Soporte por email', 'Analytics básico'],
+  },
+  silver: {
+    name: 'Plan Plata', emoji: '🥈', color: '#A8A8A8', bg: '#A8A8A815', border: '#A8A8A840',
+    billing: '€10.000 – €50.000/mes', price: 79,
+    features: ['Hasta 3 pasarelas', 'Apple Pay & Google Pay', 'IA de routing', 'Detector de fraude', 'Soporte prioritario'],
+  },
+  gold: {
+    name: 'Plan Oro', emoji: '🥇', color: '#C9A84C', bg: '#C9A84C15', border: '#C9A84C40',
+    billing: 'Más de €50.000/mes', price: 199,
+    features: ['Pasarelas ilimitadas', 'Apple Pay & Google Pay', 'IA routing avanzada', 'Detector fraude avanzado', 'Informe diario email', 'Manager dedicado'],
+  },
+};
+
+// ── COPY BUTTON COMPONENT ─────────────────────────────────────────────────────
+function CopyButton({ text, label = 'Copiar' }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+  };
+  return (
+    <button className="btn btn-ghost btn-sm" onClick={copy} style={{ fontSize: 11, minWidth: 70 }}>
+      {copied ? '✓ Copiado' : label}
+    </button>
+  );
+}
+
 // ── GET STARTED WIZARD ────────────────────────────────────────────────────────
 function GetStarted({ onComplete }) {
   const [step, setStep] = useState(0);
+
   const steps = [
-    { icon: '⬡', title: 'Conecta tu primera pasarela', desc: 'Ve a Pasarelas y conecta Stripe o Square con tu Secret Key. El sistema lo valida automáticamente.', section: 'gateways' },
-    { icon: '👥', title: 'Crea tu primer cliente', desc: 'Añade clientes para que puedan conectar sus propias pasarelas y ver sus ventas.', section: 'clients' },
-    { icon: '◫', title: 'Conecta una tienda Shopify', desc: 'Añade la URL de la tienda para que su checkout use NoLimitsPay.', section: 'shops' },
-    { icon: '⚙', title: 'Configura opciones avanzadas', desc: 'Activa la IA de routing y el detector de fraude en Settings.', section: 'settings' },
+    {
+      icon: '⬡', title: 'Conecta tu pasarela de pago', section: 'gateways',
+      desc: 'Ve a Pasarelas → + Añadir pasarela → Selecciona Stripe o Square e introduce tu Secret Key. El sistema la validará automáticamente y creará el webhook.',
+      detail: [
+        '📍 Stripe: dashboard.stripe.com → Developers → API Keys → Secret key (sk_live_...)',
+        '📍 Square: developer.squareup.com → My Apps → Credentials → Production Access Token',
+        '⚡ El sistema valida la clave en tiempo real y crea el webhook automáticamente',
+      ],
+    },
+    {
+      icon: '👥', title: 'Crea un cliente', section: 'clients',
+      desc: 'Ve a Clientes → + Nuevo cliente → introduce nombre, email y contraseña. Asígnale un plan según su facturación: Bronce, Plata u Oro.',
+      detail: [
+        '🥉 Plan Bronce: hasta €10.000/mes — €29/mes',
+        '🥈 Plan Plata: hasta €50.000/mes — €79/mes',
+        '🥇 Plan Oro: más de €50.000/mes — €199/mes',
+        '↺ Configura los días de delay para la suscripción automática',
+      ],
+    },
+    {
+      icon: '◫', title: 'Conecta la tienda Shopify', section: 'shops',
+      desc: 'Ve a Tiendas → + Nueva tienda → introduce el nombre y URL de Shopify. El sistema generará un script personalizado para instalar en 30 segundos.',
+      detail: [
+        '1. Añade la tienda en el dashboard',
+        '2. Copia el script personalizado que aparece (1 línea)',
+        '3. En Shopify → Online Store → Themes → Edit code → theme.liquid',
+        '4. Pega el script justo antes de </body>',
+        '5. Guarda — listo. Todos los compradores usarán tu checkout',
+      ],
+    },
+    {
+      icon: '⚙', title: 'Configura opciones avanzadas', section: 'settings',
+      desc: 'Ve a Settings → activa la IA de routing para optimizar automáticamente qué pasarela usa cada pago, y el detector de fraude para bloquear pagos sospechosos.',
+      detail: [
+        '🤖 IA Routing: aprende qué pasarela convierte mejor y ajusta los % automáticamente',
+        '🛡️ Detector de fraude: bloquea IPs sospechosas y emails desechables',
+        '↺ Suscripción automática: cobra automáticamente a los clientes tras cada pago',
+        '📊 Informe diario: recibe un email cada día con el resumen de ventas',
+      ],
+    },
   ];
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#00000090', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, backdropFilter: 'blur(6px)' }}>
-      <div style={{ background: G.card, border: `1px solid ${G.borderGold}`, borderRadius: 20, padding: 40, width: 540, maxWidth: '95vw', boxShadow: `0 24px 80px #00000080` }}>
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+    <div style={{ position: 'fixed', inset: 0, background: '#00000090', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, backdropFilter: 'blur(6px)', padding: '20px' }}>
+      <div style={{ background: G.card, border: `1px solid ${G.borderGold}`, borderRadius: 20, padding: '36px 40px', width: 580, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px #00000080' }}>
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <div style={{ fontSize: 40, marginBottom: 10 }}>👑</div>
           <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 24, fontWeight: 600, color: G.goldLight, marginBottom: 6 }}>Bienvenido a NoLimitsPay</div>
-          <div style={{ fontSize: 13, color: G.muted, lineHeight: 1.7 }}>Sigue estos 4 pasos para dejarlo todo listo y funcional.</div>
+          <div style={{ fontSize: 13, color: G.muted, lineHeight: 1.7 }}>Completa estos 4 pasos para tener todo funcionando.</div>
         </div>
+
+        {/* Progress bar */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
-          {steps.map((_, i) => <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= step ? G.gold : G.border, transition: 'background 0.3s' }} />)}
+          {steps.map((_, i) => (
+            <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i < step ? '#16a34a' : i === step ? G.gold : G.border, transition: 'background 0.3s', cursor: 'pointer' }} onClick={() => setStep(i)} />
+          ))}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+
+        {/* Current step detail */}
+        <div style={{ background: G.goldDim, border: `1px solid ${G.borderGold}`, borderRadius: 14, padding: '20px 24px', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+            <div style={{ fontSize: 28 }}>{steps[step].icon}</div>
+            <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 18, fontWeight: 600, color: G.goldLight }}>
+              Paso {step + 1}: {steps[step].title}
+            </div>
+          </div>
+          <div style={{ fontSize: 13, color: G.white, lineHeight: 1.7, marginBottom: 14 }}>{steps[step].desc}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {steps[step].detail.map((d, i) => (
+              <div key={i} style={{ fontSize: 12, color: G.dim, lineHeight: 1.6, fontFamily: 'DM Mono, monospace' }}>{d}</div>
+            ))}
+          </div>
+          <button className="btn btn-gold" style={{ marginTop: 16, width: '100%' }} onClick={() => onComplete(steps[step].section)}>
+            Ir a {steps[step].title} →
+          </button>
+        </div>
+
+        {/* All steps list */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
           {steps.map((s, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 16px', background: i === step ? G.goldDim : i < step ? '#16a34a10' : G.black, border: `1px solid ${i === step ? G.borderGold : i < step ? '#16a34a40' : G.border}`, borderRadius: 12 }}>
-              <div style={{ fontSize: 18, width: 36, height: 36, borderRadius: 8, background: i < step ? '#16a34a20' : i === step ? G.goldDim : G.border, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 36px' }}>{i < step ? '✓' : s.icon}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: i === step ? G.goldLight : i < step ? '#16a34a' : G.muted, marginBottom: 3 }}>{s.title}</div>
-                <div style={{ fontSize: 12, color: G.muted, lineHeight: 1.6 }}>{s.desc}</div>
+            <div key={i} onClick={() => setStep(i)} style={{
+              display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
+              background: i === step ? G.goldDim : i < step ? '#16a34a10' : G.black,
+              border: `1px solid ${i === step ? G.borderGold : i < step ? '#16a34a40' : G.border}`,
+              borderRadius: 10, cursor: 'pointer',
+            }}>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: i < step ? '#16a34a20' : i === step ? G.goldDim : G.border, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: i < step ? '#16a34a' : i === step ? G.goldLight : G.muted, flex: '0 0 28px' }}>
+                {i < step ? '✓' : i + 1}
               </div>
-              {i === step && <button className="btn btn-gold" style={{ fontSize: 11, padding: '6px 12px', whiteSpace: 'nowrap' }} onClick={() => onComplete(s.section)}>{s.title.split(' ')[0]} →</button>}
-              {i < step && <span style={{ fontSize: 18, color: '#16a34a' }}>✓</span>}
+              <div style={{ flex: 1, fontSize: 13, fontWeight: 600, color: i === step ? G.goldLight : i < step ? '#16a34a' : G.muted }}>{s.title}</div>
+              {i === step && <span style={{ fontSize: 11, color: G.gold }}>← Actual</span>}
             </div>
           ))}
         </div>
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => onComplete(null)}>Cerrar y configurar más tarde</button>
-          {step < steps.length - 1 && <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setStep(s => s + 1)}>Siguiente →</button>}
+          <div style={{ display: 'flex', gap: 8 }}>
+            {step > 0 && <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setStep(s => s - 1)}>← Anterior</button>}
+            {step < steps.length - 1 && <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setStep(s => s + 1)}>Siguiente →</button>}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// ── GATEWAY WIZARD ────────────────────────────────────────────────────────────
+// ── GATEWAY WIZARD (Plug & Play) ──────────────────────────────────────────────
 function GatewayWizard({ onSave, onCancel, showToast }) {
   const [psp, setPsp] = useState('STRIPE');
   const [step, setStep] = useState(1);
@@ -1560,27 +1661,38 @@ function GatewayWizard({ onSave, onCancel, showToast }) {
   const PSP = {
     STRIPE: {
       color: '#635BFF', bg: '#635BFF15', border: '#635BFF40', emoji: '💜', title: 'Stripe',
-      desc: 'La pasarela más popular. Acepta tarjetas, Apple Pay y Google Pay automáticamente.',
+      desc: 'La pasarela más popular. Apple Pay, Google Pay y tarjetas automáticamente.',
       fields: [
-        { key: 'secretKey', label: 'Secret Key', placeholder: 'sk_live_...', secret: true, howTo: 'dashboard.stripe.com → Developers → API Keys → Secret key', link: 'https://dashboard.stripe.com/apikeys' },
-        { key: 'publishableKey', label: 'Publishable Key', placeholder: 'pk_live_...', secret: false, howTo: 'dashboard.stripe.com → Developers → API Keys → Publishable key', link: 'https://dashboard.stripe.com/apikeys' },
+        { key: 'secretKey', label: 'Secret Key', placeholder: 'sk_live_...', secret: true, prefix: 'sk_',
+          howTo: 'dashboard.stripe.com → Developers → API Keys → "Reveal test key" o "Reveal live key"',
+          link: 'https://dashboard.stripe.com/apikeys', linkText: 'Abrir Stripe Dashboard →' },
+        { key: 'publishableKey', label: 'Publishable Key', placeholder: 'pk_live_...', secret: false, prefix: 'pk_',
+          howTo: 'Mismo sitio — la Publishable key empieza por pk_live_ o pk_test_',
+          link: 'https://dashboard.stripe.com/apikeys', linkText: 'Abrir Stripe Dashboard →' },
       ],
     },
     SQUARE: {
       color: '#00B86B', bg: '#00B86B15', border: '#00B86B40', emoji: '🟢', title: 'Square',
       desc: 'Ideal para negocios físicos y online. Acepta tarjetas y Google Pay.',
       fields: [
-        { key: 'accessToken', label: 'Access Token', placeholder: 'EAAAxxxxxxxxxx', secret: true, howTo: '1. Ve a developer.squareup.com\n2. Inicia sesión y clic en "My Applications"\n3. Selecciona tu app → "Credentials"\n4. Copia el "Production Access Token"', link: 'https://developer.squareup.com/apps' },
-        { key: 'locationId', label: 'Location ID', placeholder: 'LXXXXXXXXX', howTo: 'Square Dashboard → Locations → copia el ID de tu ubicación' },
+        { key: 'accessToken', label: 'Production Access Token', placeholder: 'EAAAxxxxxxxxxx', secret: true,
+          howTo: '1. Ve a developer.squareup.com\n2. Inicia sesión → "My Applications"\n3. Selecciona o crea una app\n4. Pestaña "Credentials"\n5. Copia el "Production Access Token"',
+          link: 'https://developer.squareup.com/apps', linkText: 'Abrir Square Developer →' },
+        { key: 'locationId', label: 'Location ID', placeholder: 'LXXXXXXXXXXXXXXXXX',
+          howTo: 'En el Square Dashboard → Locations → copia el ID de tu ubicación principal',
+          link: 'https://squareup.com/dashboard/locations', linkText: 'Abrir Square Dashboard →' },
       ],
     },
     TAILORED: {
       color: '#FF6B35', bg: '#FF6B3515', border: '#FF6B3540', emoji: '🔶', title: 'TailoredPayments',
-      desc: 'Pasarela especializada para alto volumen.',
+      desc: 'Pasarela especializada para alto volumen de transacciones.',
       fields: [
-        { key: 'apiKey', label: 'API Key', placeholder: 'tp_live_...', secret: true, howTo: 'Dashboard de TailoredPayments → Settings → API Keys' },
-        { key: 'merchantId', label: 'Merchant ID', placeholder: 'MERCHANT_xxx', howTo: 'Dashboard de TailoredPayments → Account → Merchant ID' },
-        { key: 'baseUrl', label: 'Base URL', placeholder: 'https://api.tailoredpayments.com/v1', howTo: 'Tu gestor de TailoredPayments te la proporciona' },
+        { key: 'apiKey', label: 'API Key', placeholder: 'tp_live_...', secret: true,
+          howTo: 'Dashboard de TailoredPayments → Settings → API Keys → Production Key' },
+        { key: 'merchantId', label: 'Merchant ID', placeholder: 'MERCHANT_xxxxxxxx',
+          howTo: 'Dashboard de TailoredPayments → Account → Merchant ID' },
+        { key: 'baseUrl', label: 'Base URL', placeholder: 'https://api.tailoredpayments.com/v1',
+          howTo: 'Tu gestor de TailoredPayments te proporciona esta URL' },
       ],
     },
   };
@@ -1592,20 +1704,35 @@ function GatewayWizard({ onSave, onCancel, showToast }) {
     setStep(3);
     try {
       if (psp === 'STRIPE') {
+        if (!fields.secretKey?.startsWith('sk_')) throw new Error('La Secret Key debe empezar por sk_live_ o sk_test_');
         const val = await setupApi.validateStripe(fields.secretKey);
+        if (!val.valid) throw new Error(val.error);
         setValidationResult(val);
-        if (!val.valid) { showToast(val.error, 'error'); setStep(2); setLoading(false); return; }
         const wh = await setupApi.createWebhook(fields.secretKey);
         setWebhookResult(wh);
-        await gatewaysApi.create({ name: gwName || `Stripe - ${val.account?.name || val.account?.email}`, psp: 'STRIPE', trafficPct, active: true, credentials: { secretKey: fields.secretKey, publishableKey: fields.publishableKey, webhookSecret: wh.webhookSecret || '' } });
+        await gatewaysApi.create({
+          name: gwName || `Stripe - ${val.account?.name || val.account?.email}`,
+          psp: 'STRIPE', trafficPct, active: true,
+          credentials: { secretKey: fields.secretKey, publishableKey: fields.publishableKey || '', webhookSecret: wh.webhookSecret || '' },
+        });
       } else if (psp === 'SQUARE') {
+        if (!fields.accessToken) throw new Error('Introduce el Access Token');
         const val = await setupApi.validateSquare(fields.accessToken, 'production');
+        if (!val.valid) throw new Error(val.error);
         setValidationResult(val);
-        if (!val.valid) { showToast(val.error, 'error'); setStep(2); setLoading(false); return; }
-        await gatewaysApi.create({ name: gwName || `Square - ${val.merchant?.name}`, psp: 'SQUARE', trafficPct, active: true, credentials: { accessToken: fields.accessToken, locationId: fields.locationId, environment: 'production' } });
+        await gatewaysApi.create({
+          name: gwName || `Square - ${val.merchant?.name}`,
+          psp: 'SQUARE', trafficPct, active: true,
+          credentials: { accessToken: fields.accessToken, locationId: fields.locationId || '', environment: 'production' },
+        });
       } else {
-        await gatewaysApi.create({ name: gwName || `TailoredPayments - ${fields.merchantId}`, psp: 'TAILORED', trafficPct, active: true, credentials: { apiKey: fields.apiKey, merchantId: fields.merchantId, baseUrl: fields.baseUrl || 'https://api.tailoredpayments.com/v1' } });
-        setValidationResult({ valid: true });
+        if (!fields.apiKey || !fields.merchantId) throw new Error('Introduce API Key y Merchant ID');
+        await gatewaysApi.create({
+          name: gwName || `TailoredPayments - ${fields.merchantId}`,
+          psp: 'TAILORED', trafficPct, active: true,
+          credentials: { apiKey: fields.apiKey, merchantId: fields.merchantId, baseUrl: fields.baseUrl || 'https://api.tailoredpayments.com/v1' },
+        });
+        setValidationResult({ valid: true, account: { name: fields.merchantId } });
       }
       setStep(4);
     } catch (e) {
@@ -1617,12 +1744,14 @@ function GatewayWizard({ onSave, onCancel, showToast }) {
 
   return (
     <div style={{ background: G.card, border: `1px solid ${G.borderGold}`, borderRadius: 16, overflow: 'hidden' }}>
+      {/* STEP 1 - Select PSP */}
       {step === 1 && (
         <div style={{ padding: 28 }}>
-          <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 20, fontWeight: 600, color: G.white, marginBottom: 20 }}>Conectar nueva pasarela de pago</div>
+          <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 20, fontWeight: 600, color: G.white, marginBottom: 6 }}>Conectar nueva pasarela de pago</div>
+          <div style={{ fontSize: 12, color: G.muted, marginBottom: 20 }}>Selecciona la pasarela y el sistema te guiará paso a paso.</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
             {Object.entries(PSP).map(([key, p]) => (
-              <button key={key} onClick={() => setPsp(key)} style={{ background: psp === key ? p.bg : G.black, border: `1px solid ${psp === key ? p.border : G.border}`, borderRadius: 12, padding: '18px 14px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <button key={key} onClick={() => setPsp(key)} style={{ background: psp === key ? p.bg : G.black, border: `1px solid ${psp === key ? p.border : G.border}`, borderRadius: 12, padding: '18px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'all 0.2s' }}>
                 <div style={{ fontSize: 28 }}>{p.emoji}</div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: psp === key ? p.color : G.white }}>{p.title}</div>
                 <div style={{ fontSize: 10, color: G.muted, textAlign: 'center', lineHeight: 1.4 }}>{p.desc}</div>
@@ -1630,24 +1759,25 @@ function GatewayWizard({ onSave, onCancel, showToast }) {
             ))}
           </div>
           <div className="form-group">
-            <label className="form-label">Nombre (opcional)</label>
+            <label className="form-label">Nombre identificador (opcional)</label>
             <input className="form-input" placeholder={`ej: ${info.title} - cuenta principal`} value={gwName} onChange={e => setGwName(e.target.value)} />
           </div>
           <div className="form-group">
-            <label className="form-label">% de tráfico</label>
+            <label className="form-label">% de tráfico que irá a esta pasarela</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <input type="range" min={0} max={100} value={trafficPct} onChange={e => setTrafficPct(+e.target.value)} style={{ flex: 1 }} />
-              <span className="mono" style={{ color: G.goldLight, minWidth: 36 }}>{trafficPct}%</span>
+              <span className="mono" style={{ color: G.goldLight, minWidth: 40, textAlign: 'right' }}>{trafficPct}%</span>
             </div>
-            <div style={{ fontSize: 11, color: G.muted, marginTop: 4 }}>Si es la única pasarela, ponlo al 100%.</div>
+            <div style={{ fontSize: 11, color: G.muted, marginTop: 4 }}>Si es la única pasarela, ponlo al 100%</div>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
             <button className="btn btn-ghost" onClick={onCancel}>Cancelar</button>
             <button className="btn btn-gold" onClick={() => setStep(2)}>Siguiente: Introducir claves →</button>
           </div>
         </div>
       )}
 
+      {/* STEP 2 - Enter keys */}
       {step === 2 && (
         <div style={{ padding: 28 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
@@ -1659,59 +1789,87 @@ function GatewayWizard({ onSave, onCancel, showToast }) {
               <div style={{ fontSize: 13, fontWeight: 700, color: G.white, marginBottom: 6 }}>{f.label}</div>
               {f.howTo && (
                 <div style={{ background: G.black, border: `1px solid ${G.border}`, borderRadius: 8, padding: 12, marginBottom: 8 }}>
-                  <div style={{ fontSize: 10, color: G.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4, fontFamily: 'DM Mono, monospace' }}>📍 Cómo encontrarla:</div>
+                  <div style={{ fontSize: 10, color: G.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4, fontFamily: 'DM Mono, monospace' }}>📍 Dónde encontrarla:</div>
                   <div style={{ fontSize: 12, color: G.dim, lineHeight: 1.7, fontFamily: 'DM Mono, monospace', whiteSpace: 'pre-line' }}>{f.howTo}</div>
-                  {f.link && <a href={f.link} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 6, fontSize: 12, color: info.color, textDecoration: 'none', fontWeight: 600 }}>Abrir {info.title} →</a>}
+                  {f.link && <a href={f.link} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 6, fontSize: 12, color: info.color, textDecoration: 'none', fontWeight: 600 }}>{f.linkText}</a>}
                 </div>
               )}
-              <input type={f.secret ? 'password' : 'text'} className="form-input" placeholder={f.placeholder} value={fields[f.key] || ''} onChange={e => setFields(p => ({ ...p, [f.key]: e.target.value }))} />
+              <div style={{ position: 'relative' }}>
+                <input type={f.secret ? 'password' : 'text'} className="form-input" placeholder={f.placeholder}
+                  value={fields[f.key] || ''} onChange={e => setFields(p => ({ ...p, [f.key]: e.target.value }))}
+                  style={{ paddingRight: 100 }} />
+                {f.prefix && fields[f.key] && (
+                  <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 11, fontFamily: 'DM Mono, monospace', padding: '2px 6px', borderRadius: 4, background: G.card, color: fields[f.key].startsWith(f.prefix) ? G.green : G.red }}>
+                    {fields[f.key].startsWith(f.prefix) ? '✓ correcto' : `debe empezar por ${f.prefix}`}
+                  </div>
+                )}
+              </div>
             </div>
           ))}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
             <button className="btn btn-ghost" onClick={onCancel}>Cancelar</button>
             <button className="btn btn-gold" onClick={validate} disabled={loading}>{loading ? '⏳ Validando...' : `✓ Validar y conectar ${info.title}`}</button>
           </div>
         </div>
       )}
 
+      {/* STEP 3 - Validating */}
       {step === 3 && (
-        <div style={{ padding: 48, textAlign: 'center' }}>
-          <div style={{ fontSize: 48, marginBottom: 16, animation: 'spin 1s linear infinite', display: 'inline-block' }}>◌</div>
+        <div style={{ padding: 60, textAlign: 'center' }}>
+          <div style={{ fontSize: 48, marginBottom: 16, display: 'inline-block', animation: 'spin 1s linear infinite' }}>◌</div>
           <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 20, color: G.goldLight, marginBottom: 8 }}>Conectando {info.title}...</div>
-          <div style={{ fontSize: 13, color: G.muted }}>{psp === 'STRIPE' ? 'Validando clave y creando webhook automáticamente...' : 'Verificando credenciales...'}</div>
+          <div style={{ fontSize: 13, color: G.muted }}>
+            {psp === 'STRIPE' ? 'Validando Secret Key y creando webhook automáticamente...' : 'Verificando credenciales...'}
+          </div>
         </div>
       )}
 
+      {/* STEP 4 - Success */}
       {step === 4 && (
         <div style={{ padding: 40, textAlign: 'center' }}>
           <div style={{ fontSize: 56, marginBottom: 16 }}>✅</div>
           <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 22, color: G.goldLight, marginBottom: 12 }}>{info.title} conectado correctamente</div>
           {validationResult?.account && (
             <div style={{ background: G.black, border: `1px solid ${info.border}`, borderRadius: 12, padding: 16, marginBottom: 16, textAlign: 'left' }}>
-              {[{ k: 'Nombre', v: validationResult.account.name }, { k: 'Email', v: validationResult.account.email }, { k: 'Cobros activos', v: validationResult.account.chargesEnabled ? '✓ Sí' : '⚠ Activa tu cuenta Stripe' }].map((r, i) => (
+              {Object.entries({ Nombre: validationResult.account.name, Email: validationResult.account.email, País: validationResult.account.country, 'Cobros activos': validationResult.account.chargesEnabled ? '✓ Sí' : '⚠ Activa tu cuenta Stripe en dashboard.stripe.com' }).filter(([, v]) => v).map(([k, v], i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontSize: 12, borderBottom: `1px solid ${G.border}20` }}>
-                  <span style={{ color: G.muted }}>{r.k}</span><span style={{ color: G.white, fontWeight: 600 }}>{r.v || '—'}</span>
+                  <span style={{ color: G.muted }}>{k}</span><span style={{ color: G.white, fontWeight: 600 }}>{v}</span>
                 </div>
               ))}
             </div>
           )}
-          {webhookResult?.success && <div style={{ background: '#16a34a10', border: '1px solid #16a34a40', borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12, color: '#16a34a', textAlign: 'left' }}><div style={{ fontWeight: 700, marginBottom: 4 }}>✓ Webhook creado automáticamente</div><div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: G.muted }}>{webhookResult.alreadyExisted ? 'Ya estaba configurado' : `ID: ${webhookResult.webhookId}`}</div></div>}
-          <button className="btn btn-gold" style={{ width: '100%' }} onClick={onSave}>Ir al dashboard →</button>
+          {webhookResult?.success && (
+            <div style={{ background: '#16a34a10', border: '1px solid #16a34a40', borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12, color: '#16a34a', textAlign: 'left' }}>
+              <strong>✓ Webhook creado automáticamente</strong>
+              <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: G.muted, marginTop: 4 }}>
+                {webhookResult.alreadyExisted ? 'Ya estaba configurado' : `Webhook ID: ${webhookResult.webhookId}`}
+              </div>
+            </div>
+          )}
+          {validationResult?.account && !validationResult.account.chargesEnabled && (
+            <div style={{ background: '#ea580c15', border: '1px solid #ea580c40', borderRadius: 10, padding: 14, marginBottom: 16, fontSize: 12, color: '#ea580c', textAlign: 'left' }}>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>⚠️ Tu cuenta Stripe no está completamente activada</div>
+              <div style={{ lineHeight: 1.7 }}>Para cobrar pagos reales necesitas: verificar tu identidad con DNI y añadir una cuenta bancaria en dashboard.stripe.com</div>
+              <a href="https://dashboard.stripe.com/account/onboarding" target="_blank" rel="noreferrer" style={{ color: '#ea580c', fontWeight: 700, fontSize: 12, marginTop: 6, display: 'inline-block' }}>Completar verificación →</a>
+            </div>
+          )}
+          <button className="btn btn-gold" style={{ width: '100%' }} onClick={onSave}>Perfecto, ir al dashboard →</button>
         </div>
       )}
     </div>
   );
 }
 
-// ── GATEWAYS WITH WIZARD ──────────────────────────────────────────────────────
+// ── GATEWAYS NEW ──────────────────────────────────────────────────────────────
 function GatewaysNew({ showToast }) {
   const [gateways, setGateways] = useState([]);
   const [showWizard, setShowWizard] = useState(false);
   const load = useCallback(() => { gatewaysApi.getAll().then(setGateways).catch(() => setGateways([])); }, []);
   useEffect(() => { load(); }, [load]);
 
-  const toggle = (gw) => { gatewaysApi.update(gw.id, { active: !gw.active }).then(u => { setGateways(prev => prev.map(g => g.id === gw.id ? u : g)); showToast(`Pasarela ${u.active ? 'activada' : 'pausada'}`, 'success'); }); };
-  const remove = (id) => { if (!window.confirm('¿Eliminar?')) return; gatewaysApi.delete(id).then(() => { setGateways(prev => prev.filter(g => g.id !== id)); showToast('Eliminada', 'info'); }); };
+  const toggle = (gw) => gatewaysApi.update(gw.id, { active: !gw.active }).then(u => { setGateways(prev => prev.map(g => g.id === gw.id ? u : g)); showToast(`Pasarela ${u.active ? 'activada' : 'pausada'}`, 'success'); });
+  const remove = (id) => { if (!window.confirm('¿Eliminar esta pasarela?')) return; gatewaysApi.delete(id).then(() => { setGateways(prev => prev.filter(g => g.id !== id)); showToast('Eliminada', 'info'); }); };
+  const totalPct = gateways.filter(g => g.active).reduce((s, g) => s + (g.trafficPct || 0), 0);
 
   return (
     <div className="content">
@@ -1719,6 +1877,11 @@ function GatewaysNew({ showToast }) {
         <GatewayWizard showToast={showToast} onSave={() => { setShowWizard(false); load(); showToast('Pasarela conectada ✓', 'success'); }} onCancel={() => setShowWizard(false)} />
       ) : (
         <>
+          {gateways.length > 0 && totalPct !== 100 && (
+            <div style={{ background: '#ea580c15', border: '1px solid #ea580c40', borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 13, color: '#ea580c' }}>
+              ⚠️ El total de tráfico activo es {totalPct}% — debe sumar 100%. Ajusta los porcentajes.
+            </div>
+          )}
           {gateways.length === 0 && (
             <div style={{ background: G.goldDim, border: `1px solid ${G.borderGold}`, borderRadius: 14, padding: 28, marginBottom: 24, textAlign: 'center' }}>
               <div style={{ fontSize: 36, marginBottom: 12 }}>⬡</div>
@@ -1735,11 +1898,11 @@ function GatewaysNew({ showToast }) {
               <div className="card">
                 <div className="table-wrap">
                   <table>
-                    <thead><tr><th>Nombre</th><th>PSP</th><th>Tráfico</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <thead><tr><th>Nombre</th><th>PSP</th><th>Tráfico %</th><th>Estado</th><th>Acciones</th></tr></thead>
                     <tbody>
                       {gateways.map(g => (
                         <tr key={g.id}>
-                          <td style={{ fontWeight: 600 }}>{g.name}</td>
+                          <td style={{ fontWeight: 600, fontSize: 13 }}>{g.name}</td>
                           <td><span className={`badge ${g.psp === 'STRIPE' ? 'badge-blue' : g.psp === 'SQUARE' ? 'badge-gold' : 'badge-green'}`}>{g.psp}</span></td>
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1768,89 +1931,384 @@ function GatewaysNew({ showToast }) {
   );
 }
 
-// ── CLIENTS ───────────────────────────────────────────────────────────────────
-function Clients({ showToast }) {
-  const [clients, setClients] = useState([]);
+// ── SHOPS WITH SCRIPT ─────────────────────────────────────────────────────────
+function ShopsWithScript({ showToast }) {
+  const [shops, setShops] = useState([]);
   const [modal, setModal] = useState(null);
-  const [selected, setSelected] = useState(null);
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
-  const [planForm, setPlanForm] = useState({ name: 'Plan Básico', price: '', delayDays: 30, interval: 'month' });
+  const [selectedShop, setSelectedShop] = useState(null);
+  const [form, setForm] = useState({ name: '', url: '', successUrl: '' });
 
-  const load = useCallback(() => { setClients(JSON.parse(localStorage.getItem('nlp_clients') || '[]')); }, []);
+  const load = useCallback(() => { shopsApi.getAll().then(setShops).catch(() => setShops([])); }, []);
   useEffect(() => { load(); }, [load]);
 
-  const save = (updated) => { localStorage.setItem('nlp_clients', JSON.stringify(updated)); setClients(updated); };
-
-  const createClient = () => {
-    if (!form.email || !form.password || !form.name) { showToast('Completa todos los campos', 'error'); return; }
-    save([...clients, { id: Date.now().toString(), ...form, createdAt: new Date().toISOString(), plan: planForm.price ? planForm : null }]);
-    setModal(null); setForm({ name: '', email: '', password: '' }); setPlanForm({ name: 'Plan Básico', price: '', delayDays: 30, interval: 'month' });
-    showToast('Cliente creado ✓', 'success');
+  const create = async () => {
+    if (!form.name || !form.url) { showToast('Nombre y URL son obligatorios', 'error'); return; }
+    try {
+      const s = await shopsApi.create({ name: form.name, url: form.url, successUrl: form.successUrl || `https://${form.url}/pages/gracias`, active: true });
+      setShops(prev => [...prev, s]);
+      setSelectedShop(s);
+      setModal('script');
+      setForm({ name: '', url: '', successUrl: '' });
+      showToast('Tienda creada ✓', 'success');
+    } catch (e) { showToast(e.response?.data?.error || e.message, 'error'); }
   };
 
-  const savePlan = () => { save(clients.map(c => c.id === selected.id ? { ...c, plan: planForm } : c)); setModal(null); showToast('Plan asignado ✓', 'success'); };
-  const deleteClient = (id) => { if (!window.confirm('¿Eliminar?')) return; save(clients.filter(c => c.id !== id)); showToast('Eliminado', 'info'); };
+  const remove = (id) => {
+    if (!window.confirm('¿Eliminar esta tienda?')) return;
+    shopsApi.delete(id).then(() => { setShops(prev => prev.filter(s => s.id !== id)); showToast('Eliminada', 'info'); });
+  };
+
+  const getScript = (shop) =>
+    `<!-- NoLimitsPay - ${shop.name} -->\n<script defer src="${BACKEND.replace('orkestapay-backend.onrender.com', 'nolimitspay.com')}/nlp.js?shop=${shop.id}"></script>`;
+
+  const getScriptInstructions = (shop) => [
+    '1. En Shopify → Online Store → Themes',
+    '2. Clic en "..." → Edit code',
+    '3. Busca el archivo "theme.liquid"',
+    '4. Busca la etiqueta </body> (casi al final)',
+    '5. Pega el script justo ANTES de </body>',
+    '6. Clic en "Save" — listo ✓',
+  ];
 
   return (
     <div className="content">
-      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 20 }}>
-        {[{ label: 'Clientes totales', value: clients.length }, { label: 'Con plan activo', value: clients.filter(c => c.plan).length }, { label: 'Sin plan', value: clients.filter(c => !c.plan).length }].map((k, i) => (
-          <div key={i} className="kpi-card"><div className="kpi-label">{k.label}</div><div className="kpi-value" style={{ fontSize: 28 }}>{k.value}</div></div>
-        ))}
-      </div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-        <button className="btn btn-gold" onClick={() => setModal('create')}>+ Nuevo cliente</button>
+        <button className="btn btn-gold" onClick={() => setModal('create')}>+ Nueva tienda Shopify</button>
       </div>
-      <div className="card">
-        {clients.length === 0 ? <div className="empty"><div className="empty-icon">👥</div>Sin clientes. Crea el primero.</div> : (
+
+      {shops.length === 0 ? (
+        <div className="card"><div className="empty"><div className="empty-icon">◫</div>Sin tiendas. Añade la primera tienda Shopify de tu cliente.</div></div>
+      ) : (
+        <div className="card">
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Cliente</th><th>Email</th><th>Plan</th><th>Alta</th><th>Acciones</th></tr></thead>
+              <thead><tr><th>Tienda</th><th>URL</th><th>Estado</th><th>Script</th><th>Acciones</th></tr></thead>
               <tbody>
-                {clients.map(c => (
-                  <tr key={c.id}>
-                    <td><div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><div style={{ width: 30, height: 30, borderRadius: '50%', background: G.goldDim, border: `1px solid ${G.borderGold}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: G.goldLight }}>{c.name?.[0]?.toUpperCase()}</div><span style={{ fontWeight: 600, fontSize: 13 }}>{c.name}</span></div></td>
-                    <td style={{ fontSize: 12, color: G.dim, fontFamily: 'DM Mono, monospace' }}>{c.email}</td>
-                    <td>{c.plan ? <div><div style={{ fontSize: 12, fontWeight: 600, color: G.goldLight }}>€{c.plan.price}/{c.plan.interval === 'month' ? 'mes' : c.plan.interval}</div><div style={{ fontSize: 10, color: G.muted, fontFamily: 'DM Mono, monospace' }}>Delay: {c.plan.delayDays}d</div></div> : <span className="badge badge-gray">Sin plan</span>}</td>
-                    <td style={{ fontSize: 11, color: G.muted, fontFamily: 'DM Mono, monospace' }}>{c.createdAt ? new Date(c.createdAt).toLocaleDateString('es-ES') : '—'}</td>
-                    <td><div style={{ display: 'flex', gap: 8 }}><button className="btn btn-ghost btn-sm" onClick={() => { setSelected(c); setPlanForm(c.plan || { name: 'Plan Básico', price: '', delayDays: 30, interval: 'month' }); setModal('plan'); }}>↺ Plan</button><button className="btn btn-danger btn-sm" onClick={() => deleteClient(c.id)}>Eliminar</button></div></td>
+                {shops.map(s => (
+                  <tr key={s.id}>
+                    <td style={{ fontWeight: 600, fontSize: 13 }}>{s.name}</td>
+                    <td><span className="mono" style={{ fontSize: 11, color: G.dim }}>{s.url}</span></td>
+                    <td><StatusBadge status={s.active ? 'ACTIVE' : 'INACTIVE'} /></td>
+                    <td>
+                      <button className="btn btn-ghost btn-sm" onClick={() => { setSelectedShop(s); setModal('script'); }}>
+                        Ver script →
+                      </button>
+                    </td>
+                    <td><button className="btn btn-danger btn-sm" onClick={() => remove(s.id)}>Eliminar</button></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
+      {/* CREATE MODAL */}
       {modal === 'create' && (
-        <Modal title="Nuevo cliente" onClose={() => setModal(null)}>
-          <div className="form-group"><label className="form-label">Nombre completo</label><input className="form-input" placeholder="Juan García" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></div>
-          <div className="form-group"><label className="form-label">Email</label><input type="email" className="form-input" placeholder="juan@empresa.com" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></div>
-          <div className="form-group"><label className="form-label">Contraseña inicial</label><input type="password" className="form-input" placeholder="mínimo 8 caracteres" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} /></div>
-          <div style={{ background: G.goldDim, border: `1px solid ${G.borderGold}`, borderRadius: 10, padding: 16, marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: G.goldLight, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.1em' }}>↺ Plan de suscripción (opcional)</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div className="form-group" style={{ marginBottom: 0 }}><label className="form-label">Precio (€/mes)</label><input type="number" className="form-input" placeholder="29.99" value={planForm.price} onChange={e => setPlanForm(p => ({ ...p, price: e.target.value }))} /></div>
-              <div className="form-group" style={{ marginBottom: 0 }}><label className="form-label">Días hasta primer cobro</label><input type="number" className="form-input" placeholder="30" value={planForm.delayDays} onChange={e => setPlanForm(p => ({ ...p, delayDays: +e.target.value }))} /></div>
-            </div>
-            <div style={{ fontSize: 11, color: G.muted, marginTop: 8, fontFamily: 'DM Mono, monospace' }}>Cliente paga producto → a los {planForm.delayDays || 30} días se le cobra €{planForm.price || 'X'}/mes</div>
+        <Modal title="Nueva tienda Shopify" onClose={() => setModal(null)}>
+          <div className="form-group">
+            <label className="form-label">Nombre de la tienda</label>
+            <input className="form-input" placeholder="Stock Liquidaciones" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
           </div>
-          <div className="modal-actions"><button className="btn btn-ghost" onClick={() => setModal(null)}>Cancelar</button><button className="btn btn-gold" onClick={createClient}>Crear cliente</button></div>
+          <div className="form-group">
+            <label className="form-label">URL de Shopify</label>
+            <input className="form-input" placeholder="mitienda.myshopify.com" value={form.url} onChange={e => setForm(p => ({ ...p, url: e.target.value }))} />
+            <div style={{ fontSize: 11, color: G.muted, marginTop: 4 }}>Sin https:// — solo el dominio</div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">URL de éxito (opcional)</label>
+            <input className="form-input" placeholder="https://mitienda.com/pages/gracias" value={form.successUrl} onChange={e => setForm(p => ({ ...p, successUrl: e.target.value }))} />
+            <div style={{ fontSize: 11, color: G.muted, marginTop: 4 }}>Dónde redirigir al cliente tras el pago</div>
+          </div>
+          <div className="modal-actions">
+            <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancelar</button>
+            <button className="btn btn-gold" onClick={create}>Crear tienda y ver script</button>
+          </div>
         </Modal>
       )}
 
+      {/* SCRIPT MODAL */}
+      {modal === 'script' && selectedShop && (
+        <Modal title={`Script de instalación — ${selectedShop.name}`} onClose={() => setModal(null)}>
+          <div style={{ background: '#16a34a10', border: '1px solid #16a34a40', borderRadius: 10, padding: 14, marginBottom: 20 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#16a34a', marginBottom: 6 }}>✓ Solo necesitas pegar 1 línea en Shopify</div>
+            <div style={{ fontSize: 12, color: G.muted, lineHeight: 1.7 }}>
+              El script se instala en menos de 2 minutos. Intercepta automáticamente el botón de checkout y redirige a tu checkout de NoLimitsPay.
+            </div>
+          </div>
+
+          {/* Script code */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: G.muted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Tu script personalizado:</div>
+            <div style={{ background: G.black, border: `1px solid ${G.border}`, borderRadius: 8, padding: '12px 16px', fontFamily: 'DM Mono, monospace', fontSize: 12, color: G.green, lineHeight: 1.8, wordBreak: 'break-all', position: 'relative' }}>
+              <div style={{ color: G.muted, fontSize: 11, marginBottom: 4 }}>{'<!-- NoLimitsPay - ' + selectedShop.name + ' -->'}</div>
+              <div>{`<script defer src="${BACKEND}/nlp.js?shop=${selectedShop.id}"></script>`}</div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+              <CopyButton text={getScript(selectedShop)} label="📋 Copiar script" />
+            </div>
+          </div>
+
+          {/* Instructions */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: G.muted, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Instrucciones de instalación en Shopify:</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {getScriptInstructions(selectedShop).map((inst, i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: G.goldDim, border: `1px solid ${G.borderGold}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: G.goldLight, flex: '0 0 22px', marginTop: 1 }}>{i + 1}</div>
+                  <div style={{ fontSize: 13, color: G.white, lineHeight: 1.6 }}>{inst.replace(/^\d+\. /, '')}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* What it does */}
+          <div style={{ background: G.goldDim, border: `1px solid ${G.borderGold}`, borderRadius: 10, padding: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: G.goldLight, marginBottom: 8 }}>⚡ Qué hace el script automáticamente:</div>
+            <div style={{ fontSize: 12, color: G.dim, lineHeight: 1.8 }}>
+              ✓ Detecta todos los botones de checkout de Shopify<br/>
+              ✓ Los intercepta cuando el cliente hace clic<br/>
+              ✓ Crea el pedido en NoLimitsPay automáticamente<br/>
+              ✓ Redirige al comprador a tu checkout personalizado<br/>
+              ✓ Si falla, el cliente va al checkout de Shopify (failsafe)
+            </div>
+          </div>
+
+          <div className="modal-actions" style={{ marginTop: 20 }}>
+            <button className="btn btn-ghost" onClick={() => setModal(null)}>Cerrar</button>
+            <CopyButton text={getScript(selectedShop)} label="📋 Copiar script" />
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ── CLIENTS WITH PLANS ────────────────────────────────────────────────────────
+function Clients({ showToast }) {
+  const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null);
+  const [selected, setSelected] = useState(null);
+  const [selectedTier, setSelectedTier] = useState('bronze');
+  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [planForm, setPlanForm] = useState({ name: 'Plan Bronce', price: 29, delayDays: 30, interval: 'month', tier: 'bronze' });
+
+  const token = localStorage.getItem('token');
+  const headers = { Authorization: `Bearer ${token}` };
+
+  const load = useCallback(() => {
+    setLoading(true);
+    axios.get(`${BACKEND}/api/auth/users`, { headers })
+      .then(r => { setClients(r.data || []); setLoading(false); })
+      .catch(() => { setClients([]); setLoading(false); });
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const selectTier = (key) => {
+    setSelectedTier(key);
+    setPlanForm(p => ({ ...p, name: PLAN_TIERS[key].name, price: PLAN_TIERS[key].price, tier: key }));
+  };
+
+  const createClient = async () => {
+    if (!form.email || !form.password || !form.name) { showToast('Completa nombre, email y contraseña', 'error'); return; }
+    if (form.password.length < 8) { showToast('La contraseña debe tener mínimo 8 caracteres', 'error'); return; }
+    try {
+      await axios.post(`${BACKEND}/api/auth/register`, { name: form.name, email: form.email, password: form.password, plan: planForm }, { headers });
+      showToast(`Cliente creado ✓ — Puede iniciar sesión con ${form.email}`, 'success');
+      setModal(null);
+      setForm({ name: '', email: '', password: '' });
+      setSelectedTier('bronze');
+      setPlanForm({ name: 'Plan Bronce', price: 29, delayDays: 30, interval: 'month', tier: 'bronze' });
+      load();
+    } catch (e) { showToast(e.response?.data?.error || e.message, 'error'); }
+  };
+
+  const savePlan = async () => {
+    try {
+      await axios.put(`${BACKEND}/api/auth/users/${selected.id}/plan`, { plan: planForm }, { headers });
+      showToast('Plan actualizado ✓', 'success');
+      setModal(null);
+      load();
+    } catch (e) { showToast(e.response?.data?.error || e.message, 'error'); }
+  };
+
+  const deleteClient = async (id) => {
+    if (!window.confirm('¿Eliminar este cliente? Esta acción no se puede deshacer.')) return;
+    try {
+      await axios.delete(`${BACKEND}/api/auth/users/${id}`, { headers });
+      showToast('Eliminado', 'info');
+      load();
+    } catch (e) { showToast(e.response?.data?.error || e.message, 'error'); }
+  };
+
+  const tierBadge = (tier) => {
+    const t = PLAN_TIERS[tier || 'bronze'];
+    return <span style={{ background: t.bg, border: `1px solid ${t.border}`, color: t.color, borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 700 }}>{t.emoji} {t.name}</span>;
+  };
+
+  return (
+    <div className="content">
+      {/* KPIs */}
+      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
+        {[
+          { label: 'Total clientes', value: clients.length },
+          { label: '🥉 Bronce', value: clients.filter(c => c.plan?.tier === 'bronze' || (!c.plan?.tier && c.plan)).length },
+          { label: '🥈 Plata', value: clients.filter(c => c.plan?.tier === 'silver').length },
+          { label: '🥇 Oro', value: clients.filter(c => c.plan?.tier === 'gold').length },
+        ].map((k, i) => (
+          <div key={i} className="kpi-card"><div className="kpi-label">{k.label}</div><div className="kpi-value" style={{ fontSize: 26 }}>{k.value}</div></div>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+        <button className="btn btn-gold" onClick={() => setModal('create')}>+ Nuevo cliente</button>
+      </div>
+
+      <div className="card">
+        {loading ? <div className="empty"><div className="empty-icon">◌</div>Cargando...</div> :
+          clients.length === 0 ? <div className="empty"><div className="empty-icon">👥</div>Sin clientes todavía. Crea el primero.</div> : (
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>Cliente</th><th>Email</th><th>Plan</th><th>Suscripción</th><th>Alta</th><th>Acciones</th></tr></thead>
+                <tbody>
+                  {clients.map(c => (
+                    <tr key={c.id}>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: G.goldDim, border: `1px solid ${G.borderGold}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: G.goldLight }}>{c.name?.[0]?.toUpperCase()}</div>
+                          <span style={{ fontWeight: 600, fontSize: 13 }}>{c.name}</span>
+                        </div>
+                      </td>
+                      <td style={{ fontSize: 12, color: G.dim, fontFamily: 'DM Mono, monospace' }}>{c.email}</td>
+                      <td>{c.plan ? tierBadge(c.plan.tier) : <span className="badge badge-gray">Sin plan</span>}</td>
+                      <td>
+                        {c.plan?.price ? (
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: G.goldLight }}>€{c.plan.price}/mes</div>
+                            <div style={{ fontSize: 10, color: G.muted, fontFamily: 'DM Mono, monospace' }}>Delay: {c.plan.delayDays}d</div>
+                          </div>
+                        ) : <span style={{ fontSize: 11, color: G.muted }}>—</span>}
+                      </td>
+                      <td style={{ fontSize: 11, color: G.muted, fontFamily: 'DM Mono, monospace' }}>{c.createdAt ? new Date(c.createdAt).toLocaleDateString('es-ES') : '—'}</td>
+                      <td>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button className="btn btn-ghost btn-sm" onClick={() => { setSelected(c); setSelectedTier(c.plan?.tier || 'bronze'); setPlanForm(c.plan || { name: 'Plan Bronce', price: 29, delayDays: 30, interval: 'month', tier: 'bronze' }); setModal('plan'); }}>✏ Plan</button>
+                          <button className="btn btn-danger btn-sm" onClick={() => deleteClient(c.id)}>✕</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+      </div>
+
+      {/* CREATE CLIENT MODAL */}
+      {modal === 'create' && (
+        <Modal title="Nuevo cliente" onClose={() => setModal(null)}>
+          <div className="form-group"><label className="form-label">Nombre completo *</label><input className="form-input" placeholder="Juan García" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></div>
+          <div className="form-group"><label className="form-label">Email *</label><input type="email" className="form-input" placeholder="juan@empresa.com" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></div>
+          <div className="form-group"><label className="form-label">Contraseña inicial * (mín. 8 caracteres)</label><input type="password" className="form-input" placeholder="••••••••" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} /></div>
+
+          {/* Tier selector */}
+          <div style={{ marginBottom: 16 }}>
+            <label className="form-label" style={{ display: 'block', marginBottom: 10 }}>Plan según facturación *</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+              {Object.entries(PLAN_TIERS).map(([key, tier]) => (
+                <button key={key} type="button" onClick={() => selectTier(key)} style={{ background: selectedTier === key ? tier.bg : G.black, border: `1px solid ${selectedTier === key ? tier.border : G.border}`, borderRadius: 10, padding: '14px 10px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, transition: 'all 0.2s' }}>
+                  <div style={{ fontSize: 24 }}>{tier.emoji}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: selectedTier === key ? tier.color : G.muted }}>{tier.name}</div>
+                  <div style={{ fontSize: 10, color: G.muted, textAlign: 'center', lineHeight: 1.3 }}>{tier.billing}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: selectedTier === key ? tier.color : G.dim, marginTop: 2 }}>€{tier.price}/mes</div>
+                </button>
+              ))}
+            </div>
+            {selectedTier && (
+              <div style={{ background: PLAN_TIERS[selectedTier].bg, border: `1px solid ${PLAN_TIERS[selectedTier].border}`, borderRadius: 8, padding: '10px 14px', marginTop: 10 }}>
+                {PLAN_TIERS[selectedTier].features.map((f, i) => (
+                  <div key={i} style={{ fontSize: 11, color: PLAN_TIERS[selectedTier].color, lineHeight: 1.8 }}>✓ {f}</div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Subscription config */}
+          <div style={{ background: G.goldDim, border: `1px solid ${G.borderGold}`, borderRadius: 10, padding: 14, marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: G.goldLight, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.1em' }}>↺ Suscripción automática (NoLimitsPay le cobra al cliente)</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Precio €</label>
+                <input type="number" className="form-input" value={planForm.price} onChange={e => setPlanForm(p => ({ ...p, price: +e.target.value }))} />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Días delay</label>
+                <input type="number" className="form-input" placeholder="30" value={planForm.delayDays} onChange={e => setPlanForm(p => ({ ...p, delayDays: +e.target.value }))} />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Intervalo</label>
+                <select className="form-input" value={planForm.interval} onChange={e => setPlanForm(p => ({ ...p, interval: e.target.value }))}>
+                  <option value="month">Mensual</option>
+                  <option value="year">Anual</option>
+                  <option value="week">Semanal</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: G.muted, marginTop: 8, fontFamily: 'DM Mono, monospace' }}>
+              El cliente conecta Stripe → paga el producto → a los {planForm.delayDays || 30} días se le cobra €{planForm.price}/mes de forma automática
+            </div>
+          </div>
+
+          <div className="modal-actions">
+            <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancelar</button>
+            <button className="btn btn-gold" onClick={createClient}>Crear cliente</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* EDIT PLAN MODAL */}
       {modal === 'plan' && selected && (
         <Modal title={`Plan — ${selected.name}`} onClose={() => setModal(null)}>
-          <div className="form-group"><label className="form-label">Nombre del plan</label><input className="form-input" placeholder="Plan Pro" value={planForm.name} onChange={e => setPlanForm(p => ({ ...p, name: e.target.value }))} /></div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div className="form-group"><label className="form-label">Precio (€)</label><input type="number" className="form-input" placeholder="29.99" value={planForm.price} onChange={e => setPlanForm(p => ({ ...p, price: e.target.value }))} /></div>
-            <div className="form-group"><label className="form-label">Intervalo</label><select className="form-input" value={planForm.interval} onChange={e => setPlanForm(p => ({ ...p, interval: e.target.value }))}><option value="day">Diario</option><option value="week">Semanal</option><option value="month">Mensual</option><option value="year">Anual</option></select></div>
+          <div style={{ fontSize: 12, color: G.muted, marginBottom: 16, fontFamily: 'DM Mono, monospace' }}>{selected.email}</div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
+            {Object.entries(PLAN_TIERS).map(([key, tier]) => (
+              <button key={key} type="button" onClick={() => selectTier(key)} style={{ background: selectedTier === key ? tier.bg : G.black, border: `1px solid ${selectedTier === key ? tier.border : G.border}`, borderRadius: 10, padding: '12px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, transition: 'all 0.2s' }}>
+                <div style={{ fontSize: 20 }}>{tier.emoji}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: selectedTier === key ? tier.color : G.muted }}>{tier.name}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: selectedTier === key ? tier.color : G.dim }}>€{tier.price}/mes</div>
+              </button>
+            ))}
           </div>
-          <div className="form-group"><label className="form-label">Días tras primer pago hasta cobrar suscripción</label><input type="number" className="form-input" placeholder="30" value={planForm.delayDays} onChange={e => setPlanForm(p => ({ ...p, delayDays: +e.target.value }))} /></div>
-          <div style={{ background: G.goldDim, border: `1px solid ${G.borderGold}`, borderRadius: 10, padding: 12, fontSize: 12, color: G.goldLight, lineHeight: 1.8 }}>
-            ✦ Cliente paga producto → a los {planForm.delayDays || 30} días se le cobra €{planForm.price || 'X'} → luego cada {planForm.interval === 'month' ? 'mes' : planForm.interval}
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Precio €</label>
+              <input type="number" className="form-input" value={planForm.price} onChange={e => setPlanForm(p => ({ ...p, price: +e.target.value }))} />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Días delay</label>
+              <input type="number" className="form-input" value={planForm.delayDays} onChange={e => setPlanForm(p => ({ ...p, delayDays: +e.target.value }))} />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Intervalo</label>
+              <select className="form-input" value={planForm.interval} onChange={e => setPlanForm(p => ({ ...p, interval: e.target.value }))}>
+                <option value="month">Mensual</option>
+                <option value="year">Anual</option>
+                <option value="week">Semanal</option>
+              </select>
+            </div>
           </div>
-          <div className="modal-actions"><button className="btn btn-ghost" onClick={() => setModal(null)}>Cancelar</button><button className="btn btn-gold" onClick={savePlan}>Guardar plan</button></div>
+
+          <div style={{ background: G.goldDim, border: `1px solid ${G.borderGold}`, borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12, color: G.goldLight, lineHeight: 1.8 }}>
+            {selected.name} → paga producto → a los {planForm.delayDays}d se le cobra €{planForm.price} → cada {planForm.interval === 'month' ? 'mes' : planForm.interval === 'year' ? 'año' : 'semana'}
+          </div>
+
+          <div className="modal-actions">
+            <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancelar</button>
+            <button className="btn btn-gold" onClick={savePlan}>Guardar plan</button>
+          </div>
         </Modal>
       )}
     </div>
@@ -1859,11 +2317,19 @@ function Clients({ showToast }) {
 
 // ── SETTINGS ──────────────────────────────────────────────────────────────────
 function Settings({ showToast }) {
-  const [settings, setSettings] = useState({ aiRouting: { enabled: false }, fraudSettings: { enabled: true, maxAttemptsPerIp: 3, maxAmountPerIp: 50000, blockDisposableEmails: true }, dailyReport: { enabled: false, hour: 23 }, routing: 'percentage', retryAttempts: 3 });
-  const [tab, setTab] = useState('ai');
+  const [settings, setSettings] = useState({
+    aiRouting: { enabled: false },
+    fraudSettings: { enabled: true, maxAttemptsPerIp: 3, maxAmountPerIp: 50000, blockDisposableEmails: true },
+    dailyReport: { enabled: false, hour: 23 },
+    autoSubscription: { enabled: false, price: '', delayDays: 30, interval: 'month' },
+    routing: 'percentage',
+    retryAttempts: 3,
+  });
+  const [tab, setTab] = useState('subs');
   const [aiHistory, setAiHistory] = useState([]);
   const [fraudStats, setFraudStats] = useState(null);
   const [runningAi, setRunningAi] = useState(false);
+  const [sendingReport, setSendingReport] = useState(false);
 
   useEffect(() => {
     setupApi.getSettings().then(setSettings).catch(() => {});
@@ -1873,53 +2339,155 @@ function Settings({ showToast }) {
 
   const save = async (newSettings) => {
     setSettings(newSettings);
-    try { await setupApi.saveSettings(newSettings); showToast('Guardado ✓', 'success'); } catch { showToast('Error guardando', 'error'); }
+    try { await setupApi.saveSettings(newSettings); showToast('Guardado ✓', 'success'); }
+    catch { showToast('Error guardando', 'error'); }
   };
 
-  const runAi = async () => {
-    setRunningAi(true);
-    try { const r = await setupApi.runAiRouting(); showToast(r.message || 'IA ejecutada', 'success'); setupApi.getAiHistory().then(setAiHistory); } catch (e) { showToast(e.message, 'error'); }
-    setRunningAi(false);
-  };
+  const TABS = [
+    { id: 'subs', label: '↺ Suscripción automática' },
+    { id: 'ai', label: '🤖 IA Routing' },
+    { id: 'fraud', label: '🛡️ Fraude' },
+    { id: 'report', label: '📊 Informe diario' },
+    { id: 'general', label: '⚙ General' },
+  ];
 
   return (
     <div className="content">
-      <div className="section-tabs" style={{ marginBottom: 24 }}>
-        {[{ id: 'ai', label: '🤖 IA Routing' }, { id: 'fraud', label: '🛡️ Detector de fraude' }, { id: 'report', label: '📊 Informe diario' }, { id: 'general', label: '⚙ General' }].map(t => (
+      <div className="section-tabs" style={{ marginBottom: 24, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {TABS.map(t => (
           <button key={t.id} className={`section-tab ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>{t.label}</button>
         ))}
       </div>
 
+      {/* AUTO SUBSCRIPTION */}
+      {tab === 'subs' && (
+        <div className="card">
+          <div className="card-head">
+            <span className="card-title">↺ Suscripción automática en pagos</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 12, color: settings.autoSubscription?.enabled ? G.green : G.muted }}>
+                {settings.autoSubscription?.enabled ? '● Activa' : '○ Inactiva'}
+              </span>
+              <button className={`btn ${settings.autoSubscription?.enabled ? 'btn-danger' : 'btn-gold'} btn-sm`}
+                onClick={() => save({ ...settings, autoSubscription: { ...settings.autoSubscription, enabled: !settings.autoSubscription?.enabled } })}>
+                {settings.autoSubscription?.enabled ? 'Desactivar' : 'Activar'}
+              </button>
+            </div>
+          </div>
+          <div className="card-body">
+            <div style={{ fontSize: 13, color: G.muted, lineHeight: 1.8, marginBottom: 16 }}>
+              Cuando está <strong style={{ color: G.white }}>activa</strong>, cada vez que un cliente complete un pago en el checkout, se creará automáticamente una suscripción en Stripe con el precio y tiempo que configures. El cliente <strong style={{ color: G.white }}>no paga la suscripción hasta que pasen los días configurados</strong>.
+            </div>
+
+            {settings.autoSubscription?.enabled && (
+              <>
+                <div style={{ background: G.goldDim, border: `1px solid ${G.borderGold}`, borderRadius: 12, padding: 20, marginBottom: 20 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: G.goldLight, marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Configuración</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">Precio (€)</label>
+                      <input type="number" className="form-input" placeholder="29.99" value={settings.autoSubscription?.price || ''}
+                        onChange={e => save({ ...settings, autoSubscription: { ...settings.autoSubscription, price: e.target.value } })} />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">Días hasta primer cobro</label>
+                      <input type="number" className="form-input" placeholder="30" value={settings.autoSubscription?.delayDays || 30}
+                        onChange={e => save({ ...settings, autoSubscription: { ...settings.autoSubscription, delayDays: +e.target.value } })} />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">Intervalo</label>
+                      <select className="form-input" value={settings.autoSubscription?.interval || 'month'}
+                        onChange={e => save({ ...settings, autoSubscription: { ...settings.autoSubscription, interval: e.target.value } })}>
+                        <option value="day">Diario</option>
+                        <option value="week">Semanal</option>
+                        <option value="month">Mensual</option>
+                        <option value="year">Anual</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Timeline */}
+                <div style={{ background: G.black, border: `1px solid ${G.border}`, borderRadius: 12, padding: 20 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: G.muted, marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'DM Mono, monospace' }}>Así funciona para el cliente:</div>
+                  {[
+                    { icon: '💳', label: 'Día 0', title: 'Cliente paga en la tienda', desc: 'Paga el producto normalmente. NoLimitsPay registra el pago.', color: G.goldLight },
+                    { icon: '↺', label: `Día ${settings.autoSubscription?.delayDays || 30}`, title: 'Primer cobro de suscripción', desc: `Se le cobra €${settings.autoSubscription?.price || 'X'} automáticamente vía Stripe.`, color: G.green },
+                    { icon: '🔄', label: `Cada ${settings.autoSubscription?.interval === 'month' ? 'mes' : settings.autoSubscription?.interval === 'year' ? 'año' : settings.autoSubscription?.interval === 'week' ? 'semana' : 'día'}`, title: 'Renovación automática', desc: `Se cobra €${settings.autoSubscription?.price || 'X'} de forma recurrente.`, color: G.dim },
+                  ].map((s, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 14, paddingBottom: i < 2 ? 14 : 0, borderBottom: i < 2 ? `1px dashed ${G.border}` : 'none', marginBottom: i < 2 ? 14 : 0 }}>
+                      <div style={{ fontSize: 20, width: 32, textAlign: 'center', flex: '0 0 32px' }}>{s.icon}</div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: s.color, background: `${s.color}20`, padding: '2px 8px', borderRadius: 4, fontFamily: 'DM Mono, monospace' }}>{s.label}</span>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: G.white }}>{s.title}</span>
+                        </div>
+                        <div style={{ fontSize: 12, color: G.muted }}>{s.desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {!settings.autoSubscription?.enabled && (
+              <div className="empty" style={{ paddingTop: 8 }}>
+                <div className="empty-icon" style={{ fontSize: 28 }}>↺</div>
+                <div style={{ fontSize: 13, color: G.muted, textAlign: 'center' }}>
+                  Activa esta opción para cobrar automáticamente una suscripción a cada cliente que pague en el checkout.
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* AI ROUTING */}
       {tab === 'ai' && (
         <div className="card">
           <div className="card-head">
             <span className="card-title">🤖 IA de routing inteligente</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ fontSize: 12, color: settings.aiRouting?.enabled ? G.green : G.muted }}>{settings.aiRouting?.enabled ? '● Activa' : '○ Inactiva'}</span>
-              <button className={`btn ${settings.aiRouting?.enabled ? 'btn-danger' : 'btn-gold'} btn-sm`} onClick={() => save({ ...settings, aiRouting: { ...settings.aiRouting, enabled: !settings.aiRouting?.enabled } })}>{settings.aiRouting?.enabled ? 'Desactivar' : 'Activar IA'}</button>
+              <button className={`btn ${settings.aiRouting?.enabled ? 'btn-danger' : 'btn-gold'} btn-sm`}
+                onClick={() => save({ ...settings, aiRouting: { ...settings.aiRouting, enabled: !settings.aiRouting?.enabled } })}>
+                {settings.aiRouting?.enabled ? 'Desactivar' : 'Activar IA'}
+              </button>
             </div>
           </div>
           <div className="card-body">
-            <div style={{ fontSize: 13, color: G.muted, lineHeight: 1.8, marginBottom: 16 }}>Cuando está <strong style={{ color: G.white }}>activa</strong>, la IA analiza la tasa de éxito de cada pasarela en los últimos 7 días y ajusta automáticamente los porcentajes de tráfico.<br/>Cuando está <strong style={{ color: G.white }}>inactiva</strong>, los porcentajes que configures manualmente se respetan al 100%.</div>
-            {settings.aiRouting?.enabled && <button className="btn btn-ghost btn-sm" onClick={runAi} disabled={runningAi} style={{ marginBottom: 16 }}>{runningAi ? '⏳ Ejecutando...' : '▶ Ejecutar IA ahora'}</button>}
-            {aiHistory.length === 0 && <div className="empty"><div className="empty-icon" style={{ fontSize: 24 }}>🤖</div>La IA necesita al menos 10 transacciones para empezar a optimizar.</div>}
-            {aiHistory.slice(0, 5).map((h, i) => (
+            <div style={{ fontSize: 13, color: G.muted, lineHeight: 1.8, marginBottom: 16 }}>
+              Cuando está <strong style={{ color: G.white }}>activa</strong>, analiza la tasa de éxito de cada pasarela en los últimos 7 días y ajusta automáticamente los % de tráfico para maximizar conversiones.
+            </div>
+            {settings.aiRouting?.enabled && (
+              <button className="btn btn-ghost btn-sm" disabled={runningAi} onClick={async () => { setRunningAi(true); try { const r = await setupApi.runAiRouting(); showToast(r.message || 'IA ejecutada', 'success'); setupApi.getAiHistory().then(setAiHistory); } catch (e) { showToast(e.message, 'error'); } setRunningAi(false); }} style={{ marginBottom: 16 }}>
+                {runningAi ? '⏳ Ejecutando...' : '▶ Ejecutar IA ahora'}
+              </button>
+            )}
+            {aiHistory.length === 0 ? (
+              <div className="empty"><div className="empty-icon" style={{ fontSize: 24 }}>🤖</div>La IA necesita al menos 10 transacciones para aprender.</div>
+            ) : aiHistory.slice(0, 5).map((h, i) => (
               <div key={i} style={{ background: G.black, border: `1px solid ${G.border}`, borderRadius: 10, padding: 12, marginBottom: 8 }}>
                 <div style={{ fontSize: 11, color: G.muted, fontFamily: 'DM Mono, monospace', marginBottom: 6 }}>{new Date(h.timestamp).toLocaleString('es-ES')}</div>
-                {h.decisions?.map((d, j) => <div key={j} style={{ fontSize: 12, color: G.dim }}><span style={{ color: G.goldLight, fontWeight: 600 }}>{d.gateway}</span>: {d.oldPct}% → <span style={{ color: G.green }}>{d.newPct}%</span> <span style={{ color: G.muted }}>({d.reason})</span></div>)}
+                {(h.decisions || []).map((d, j) => <div key={j} style={{ fontSize: 12, color: G.dim }}><span style={{ color: G.goldLight, fontWeight: 600 }}>{d.gateway}</span>: {d.oldPct}% → <span style={{ color: G.green }}>{d.newPct}%</span> <span style={{ color: G.muted }}>({d.reason})</span></div>)}
+                {(!h.decisions || h.decisions.length === 0) && <div style={{ fontSize: 12, color: G.muted }}>Sin cambios necesarios — ya están optimizados</div>}
               </div>
             ))}
           </div>
         </div>
       )}
 
+      {/* FRAUD */}
       {tab === 'fraud' && (
         <div className="card">
           <div className="card-head">
             <span className="card-title">🛡️ Detector de fraude</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ fontSize: 12, color: settings.fraudSettings?.enabled ? G.green : G.muted }}>{settings.fraudSettings?.enabled ? '● Activo' : '○ Inactivo'}</span>
-              <button className={`btn ${settings.fraudSettings?.enabled ? 'btn-danger' : 'btn-gold'} btn-sm`} onClick={() => save({ ...settings, fraudSettings: { ...settings.fraudSettings, enabled: !settings.fraudSettings?.enabled } })}>{settings.fraudSettings?.enabled ? 'Desactivar' : 'Activar'}</button>
+              <button className={`btn ${settings.fraudSettings?.enabled ? 'btn-danger' : 'btn-gold'} btn-sm`}
+                onClick={() => save({ ...settings, fraudSettings: { ...settings.fraudSettings, enabled: !settings.fraudSettings?.enabled } })}>
+                {settings.fraudSettings?.enabled ? 'Desactivar' : 'Activar'}
+              </button>
             </div>
           </div>
           <div className="card-body">
@@ -1930,62 +2498,95 @@ function Settings({ showToast }) {
                 ))}
               </div>
             )}
-            {[{ key: 'maxAttemptsPerIp', label: 'Máx. intentos por IP/hora', type: 'number', desc: 'Bloquea IPs que intenten más de X pagos por hora' }, { key: 'blockDisposableEmails', label: 'Bloquear emails desechables', type: 'toggle', desc: 'Bloquea mailinator, tempmail, yopmail, etc.' }].map(rule => (
+            {[
+              { key: 'maxAttemptsPerIp', label: 'Máx. intentos por IP/hora', type: 'number', desc: 'Bloquea IPs que intenten más de X pagos por hora' },
+              { key: 'blockDisposableEmails', label: 'Bloquear emails desechables', type: 'toggle', desc: 'Bloquea mailinator, tempmail, yopmail, etc.' },
+            ].map(rule => (
               <div key={rule.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: `1px solid ${G.border}20` }}>
-                <div><div style={{ fontSize: 13, fontWeight: 600 }}>{rule.label}</div><div style={{ fontSize: 11, color: G.muted, marginTop: 2 }}>{rule.desc}</div></div>
+                <div><div style={{ fontSize: 13, fontWeight: 600 }}>{rule.label}</div><div style={{ fontSize: 11, color: G.muted }}>{rule.desc}</div></div>
                 {rule.type === 'toggle' ? (
-                  <button className={`btn ${settings.fraudSettings?.[rule.key] ? 'btn-gold' : 'btn-ghost'} btn-sm`} onClick={() => save({ ...settings, fraudSettings: { ...settings.fraudSettings, [rule.key]: !settings.fraudSettings?.[rule.key] } })}>{settings.fraudSettings?.[rule.key] ? '✓ ON' : 'OFF'}</button>
+                  <button className={`btn ${settings.fraudSettings?.[rule.key] ? 'btn-gold' : 'btn-ghost'} btn-sm`}
+                    onClick={() => save({ ...settings, fraudSettings: { ...settings.fraudSettings, [rule.key]: !settings.fraudSettings?.[rule.key] } })}>
+                    {settings.fraudSettings?.[rule.key] ? '✓ ON' : 'OFF'}
+                  </button>
                 ) : (
-                  <input type="number" className="form-input" style={{ width: 80, fontSize: 13 }} value={settings.fraudSettings?.[rule.key] || ''} onChange={e => save({ ...settings, fraudSettings: { ...settings.fraudSettings, [rule.key]: +e.target.value } })} />
+                  <input type="number" className="form-input" style={{ width: 80 }} value={settings.fraudSettings?.[rule.key] || ''}
+                    onChange={e => save({ ...settings, fraudSettings: { ...settings.fraudSettings, [rule.key]: +e.target.value } })} />
                 )}
               </div>
             ))}
+            {fraudStats?.recentBlocked?.length > 0 && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: G.muted, textTransform: 'uppercase', marginBottom: 8, fontFamily: 'DM Mono, monospace' }}>Últimos bloqueados</div>
+                {fraudStats.recentBlocked.map((b, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 12, borderBottom: `1px solid ${G.border}20` }}>
+                    <span style={{ color: G.dim }}>{b.email || b.ip}</span>
+                    <span style={{ color: G.red }}>{b.reason}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
 
+      {/* DAILY REPORT */}
       {tab === 'report' && (
         <div className="card">
           <div className="card-head">
             <span className="card-title">📊 Informe diario por email</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ fontSize: 12, color: settings.dailyReport?.enabled ? G.green : G.muted }}>{settings.dailyReport?.enabled ? '● Activo' : '○ Inactivo'}</span>
-              <button className={`btn ${settings.dailyReport?.enabled ? 'btn-danger' : 'btn-gold'} btn-sm`} onClick={() => save({ ...settings, dailyReport: { ...settings.dailyReport, enabled: !settings.dailyReport?.enabled } })}>{settings.dailyReport?.enabled ? 'Desactivar' : 'Activar'}</button>
+              <button className={`btn ${settings.dailyReport?.enabled ? 'btn-danger' : 'btn-gold'} btn-sm`}
+                onClick={() => save({ ...settings, dailyReport: { ...settings.dailyReport, enabled: !settings.dailyReport?.enabled } })}>
+                {settings.dailyReport?.enabled ? 'Desactivar' : 'Activar'}
+              </button>
             </div>
           </div>
           <div className="card-body">
-            <div style={{ fontSize: 13, color: G.muted, lineHeight: 1.8, marginBottom: 16 }}>Cada día a la hora configurada, el sistema enviará automáticamente un informe con el resumen de pagos, revenue por pasarela y tasa de conversión al email de cada cliente.</div>
+            <div style={{ fontSize: 13, color: G.muted, lineHeight: 1.8, marginBottom: 16 }}>
+              Cada día a la hora configurada, el sistema enviará un resumen automático con pagos del día, revenue por pasarela y tasa de conversión a todos los clientes registrados.
+            </div>
             <div style={{ background: '#ea580c15', border: '1px solid #ea580c40', borderRadius: 10, padding: 14, marginBottom: 16 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#ea580c', marginBottom: 6 }}>⚠️ Necesitas configurar el SMTP en Render</div>
-              <div style={{ fontSize: 12, color: G.muted, fontFamily: 'DM Mono, monospace', lineHeight: 1.8 }}>SMTP_HOST=smtp.gmail.com<br/>SMTP_PORT=587<br/>SMTP_USER=tu@gmail.com<br/>SMTP_PASS=tu_app_password</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#ea580c', marginBottom: 6 }}>⚠️ Requiere configurar SMTP en Render → Environment:</div>
+              <div style={{ fontSize: 11, color: G.muted, fontFamily: 'DM Mono, monospace', lineHeight: 1.8 }}>
+                SMTP_HOST=smtp.gmail.com<br/>SMTP_PORT=587<br/>SMTP_USER=tu@gmail.com<br/>SMTP_PASS=tu_contraseña_de_aplicación_gmail
+              </div>
             </div>
             <div className="form-group">
               <label className="form-label">Hora de envío</label>
-              <select className="form-input" value={settings.dailyReport?.hour || 23} onChange={e => save({ ...settings, dailyReport: { ...settings.dailyReport, hour: +e.target.value } })}>
+              <select className="form-input" value={settings.dailyReport?.hour || 23}
+                onChange={e => save({ ...settings, dailyReport: { ...settings.dailyReport, hour: +e.target.value } })}>
                 {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>)}
               </select>
             </div>
-            <button className="btn btn-ghost btn-sm" onClick={() => { setupApi.getDailyReport().then(() => showToast('Informe generado ✓', 'success')).catch(e => showToast(e.message, 'error')); }}>📊 Generar informe ahora</button>
+            <button className="btn btn-ghost btn-sm" disabled={sendingReport}
+              onClick={async () => { setSendingReport(true); try { await setupApi.getDailyReport(); showToast('Informe generado ✓', 'success'); } catch (e) { showToast(e.message, 'error'); } setSendingReport(false); }}>
+              {sendingReport ? '⏳ Generando...' : '📊 Generar informe ahora (prueba)'}
+            </button>
           </div>
         </div>
       )}
 
+      {/* GENERAL */}
       {tab === 'general' && (
         <div className="card">
           <div className="card-head"><span className="card-title">⚙ Configuración general</span></div>
           <div className="card-body">
             <div className="form-group">
               <label className="form-label">Estrategia de routing</label>
-              <select className="form-input" value={settings.routing || 'percentage'} onChange={e => save({ ...settings, routing: e.target.value })}>
-                <option value="percentage">Por porcentaje (recomendado)</option>
-                <option value="priority">Por prioridad</option>
-                <option value="round_robin">Round robin</option>
+              <select className="form-input" value={settings.routing || 'percentage'}
+                onChange={e => save({ ...settings, routing: e.target.value })}>
+                <option value="percentage">Por porcentaje (recomendado) — distribuye el tráfico según los % configurados</option>
+                <option value="priority">Por prioridad — siempre usa la primera pasarela, las demás son failover</option>
+                <option value="round_robin">Round robin — alterna entre pasarelas de forma rotativa</option>
               </select>
             </div>
             <div className="form-group">
               <label className="form-label">Máximo de reintentos por pago fallido</label>
-              <input type="number" className="form-input" min={1} max={5} value={settings.retryAttempts || 3} onChange={e => save({ ...settings, retryAttempts: +e.target.value })} />
-              <div style={{ fontSize: 11, color: G.muted, marginTop: 4 }}>Si un pago falla, el sistema lo reintenta con otra pasarela hasta este número de veces.</div>
+              <input type="number" className="form-input" min={1} max={5} value={settings.retryAttempts || 3}
+                onChange={e => save({ ...settings, retryAttempts: +e.target.value })} />
+              <div style={{ fontSize: 11, color: G.muted, marginTop: 4 }}>Si un pago falla, el sistema lo reintenta con otra pasarela automáticamente hasta este número de veces.</div>
             </div>
           </div>
         </div>
@@ -2006,7 +2607,7 @@ export default function App() {
   const showToast = useCallback((msg, type = 'success') => setToast({ msg, type }), []);
 
   useEffect(() => {
-    if (user && user.role === 'admin' && !localStorage.getItem('nlp_gs_seen')) {
+    if (user?.role === 'admin' && !localStorage.getItem('nlp_gs_seen')) {
       setShowGetStarted(true);
     }
   }, [user]);
@@ -2022,24 +2623,32 @@ export default function App() {
 
   const navItems = [
     { id: 'dashboard', icon: '◈', label: 'Dashboard' },
-    { id: 'clients', icon: '👥', label: 'Clientes', badge: JSON.parse(localStorage.getItem('nlp_clients') || '[]').length },
+    { id: 'clients', icon: '👥', label: 'Clientes' },
     { id: 'payments', icon: '◎', label: 'Pagos' },
     { id: 'subscriptions', icon: '↺', label: 'Suscripciones' },
     { id: 'batch', icon: '⊞', label: 'Batch Payment' },
     { id: 'gateways', icon: '⬡', label: 'Pasarelas' },
     { id: 'settings', icon: '⚙', label: 'Settings' },
     { id: 'webhooks', icon: '⊕', label: 'Webhooks' },
-    { id: 'shops', icon: '◫', label: 'Tiendas' },
+    { id: 'shops', icon: '◫', label: 'Tiendas Shopify' },
     { id: 'pixels', icon: '◉', label: 'Pixels' },
     { id: 'templates', icon: '◻', label: 'Email Templates' },
   ];
 
-  const titles = { dashboard: 'Dashboard', clients: 'Clientes', payments: 'Pagos', subscriptions: 'Suscripciones', batch: 'Batch Payment', gateways: 'Pasarelas', settings: 'Settings', webhooks: 'Webhooks', shops: 'Tiendas', pixels: 'Pixels', templates: 'Email Templates' };
+  const titles = {
+    dashboard: 'Dashboard', clients: 'Gestión de clientes', payments: 'Pagos',
+    subscriptions: 'Suscripciones', batch: 'Batch Payment', gateways: 'Pasarelas',
+    settings: 'Configuración avanzada', webhooks: 'Webhooks',
+    shops: 'Tiendas Shopify', pixels: 'Pixels', templates: 'Email Templates',
+  };
+
+  const logout = () => { localStorage.clear(); setUser(null); };
 
   return (
     <>
       <style>{css}</style>
       {showGetStarted && <GetStarted onComplete={goTo} />}
+
       <div className="layout">
         <div className={`sidebar-overlay ${sidebarOpen ? 'open' : ''}`} onClick={() => setSidebarOpen(false)} />
         <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
@@ -2049,13 +2658,12 @@ export default function App() {
               <div><div className="logo-name">NoLimitsPay</div><div className="logo-sub">Admin Panel</div></div>
             </div>
           </div>
+
           <nav className="nav">
             <div className="nav-section-label">Principal</div>
             {navItems.slice(0, 7).map(item => (
               <button key={item.id} className={`nav-item ${section === item.id ? 'active' : ''}`} onClick={() => goTo(item.id)}>
-                <span className="nav-icon">{item.icon}</span>
-                <span>{item.label}</span>
-                {item.badge > 0 && <span className="nav-badge">{item.badge}</span>}
+                <span className="nav-icon">{item.icon}</span><span>{item.label}</span>
               </button>
             ))}
             <div className="nav-section-label" style={{ marginTop: 8 }}>Integraciones</div>
@@ -2065,17 +2673,20 @@ export default function App() {
               </button>
             ))}
             <div style={{ marginTop: 12, padding: '0 4px' }}>
-              <button className="btn btn-ghost" style={{ width: '100%', fontSize: 11, gap: 6 }} onClick={() => { localStorage.removeItem('nlp_gs_seen'); setShowGetStarted(true); }}>
-                👋 Ver Get Started
+              <button className="btn btn-ghost" style={{ width: '100%', fontSize: 11, gap: 6 }}
+                onClick={() => { localStorage.removeItem('nlp_gs_seen'); setShowGetStarted(true); }}>
+                👋 Ver guía de inicio
               </button>
             </div>
           </nav>
+
           <div className="sidebar-user">
             <div className="user-avatar">{user.name?.[0]?.toUpperCase() || 'A'}</div>
             <div><div className="user-name">{user.name || 'Admin'}</div><div className="user-role">★ Administrador</div></div>
-            <button className="logout-btn" onClick={() => { localStorage.clear(); setUser(null); }} title="Cerrar sesión">⏻</button>
+            <button className="logout-btn" onClick={logout} title="Cerrar sesión">⏻</button>
           </div>
         </aside>
+
         <main className="main">
           <div className="topbar">
             <div>
@@ -2089,6 +2700,7 @@ export default function App() {
               </div>
             </div>
           </div>
+
           {section === 'dashboard' && <Dashboard showToast={showToast} />}
           {section === 'clients' && <Clients showToast={showToast} />}
           {section === 'payments' && <Payments showToast={showToast} />}
@@ -2097,11 +2709,22 @@ export default function App() {
           {section === 'gateways' && <GatewaysNew showToast={showToast} />}
           {section === 'settings' && <Settings showToast={showToast} />}
           {section === 'webhooks' && <Webhooks showToast={showToast} />}
-          {section === 'shops' && <SimpleList showToast={showToast} apiObj={shopsApi} title="Nueva tienda Shopify" columns={[{ key: 'name', label: 'Nombre' }, { key: 'url', label: 'URL', render: v => <span className="mono" style={{ fontSize: 11, color: G.dim }}>{v}</span> }, { key: 'active', label: 'Estado', render: v => <StatusBadge status={v ? 'ACTIVE' : 'INACTIVE'} /> }]} createFields={[{ key: 'name', label: 'Nombre de la tienda', placeholder: 'Mi Tienda' }, { key: 'url', label: 'URL Shopify', placeholder: 'mitienda.myshopify.com' }]} />}
-          {section === 'pixels' && <SimpleList showToast={showToast} apiObj={pixelsApi} title="Nuevo pixel" columns={[{ key: 'provider', label: 'Proveedor', render: v => <span className={`badge ${v === 'META' ? 'badge-blue' : v === 'TIKTOK' ? 'badge-red' : 'badge-gold'}`}>{v}</span> }, { key: 'pixelId', label: 'Pixel ID', render: v => <span className="mono" style={{ fontSize: 11 }}>{v}</span> }, { key: 'name', label: 'Nombre' }]} createFields={[{ key: 'provider', label: 'Proveedor', type: 'select', options: [{ value: 'META', label: 'Meta (Facebook)' }, { value: 'TIKTOK', label: 'TikTok' }, { value: 'PINTEREST', label: 'Pinterest' }] }, { key: 'pixelId', label: 'Pixel ID', placeholder: '1234567890' }, { key: 'name', label: 'Nombre', placeholder: 'Pixel principal' }]} />}
-          {section === 'templates' && <SimpleList showToast={showToast} apiObj={templatesApi} title="Nueva plantilla" columns={[{ key: 'name', label: 'Nombre' }, { key: 'subject', label: 'Asunto', render: v => <span style={{ fontSize: 12, color: G.dim }}>{v}</span> }, { key: 'active', label: 'Estado', render: v => <StatusBadge status={v ? 'ACTIVE' : 'INACTIVE'} /> }]} createFields={[{ key: 'name', label: 'Nombre interno', placeholder: 'Cart Recovery' }, { key: 'subject', label: 'Asunto del email', placeholder: '¡Tu carrito te espera!' }, { key: 'html', label: 'HTML del email', placeholder: '<h1>Hola {{name}}</h1>' }]} />}
+          {section === 'shops' && <ShopsWithScript showToast={showToast} />}
+          {section === 'pixels' && (
+            <SimpleList showToast={showToast} apiObj={pixelsApi} title="Nuevo pixel"
+              columns={[{ key: 'provider', label: 'Proveedor', render: v => <span className={`badge ${v === 'META' ? 'badge-blue' : v === 'TIKTOK' ? 'badge-red' : 'badge-gold'}`}>{v}</span> }, { key: 'pixelId', label: 'Pixel ID', render: v => <span className="mono" style={{ fontSize: 11 }}>{v}</span> }, { key: 'name', label: 'Nombre' }]}
+              createFields={[{ key: 'provider', label: 'Proveedor', type: 'select', options: [{ value: 'META', label: 'Meta (Facebook)' }, { value: 'TIKTOK', label: 'TikTok' }, { value: 'PINTEREST', label: 'Pinterest' }] }, { key: 'pixelId', label: 'Pixel ID', placeholder: '1234567890' }, { key: 'name', label: 'Nombre', placeholder: 'Pixel principal' }]}
+            />
+          )}
+          {section === 'templates' && (
+            <SimpleList showToast={showToast} apiObj={templatesApi} title="Nueva plantilla"
+              columns={[{ key: 'name', label: 'Nombre' }, { key: 'subject', label: 'Asunto', render: v => <span style={{ fontSize: 12, color: G.dim }}>{v}</span> }, { key: 'active', label: 'Estado', render: v => <StatusBadge status={v ? 'ACTIVE' : 'INACTIVE'} /> }]}
+              createFields={[{ key: 'name', label: 'Nombre interno', placeholder: 'Cart Recovery' }, { key: 'subject', label: 'Asunto del email', placeholder: '¡Tu carrito te espera!' }, { key: 'html', label: 'HTML del email', placeholder: '<h1>Hola {{name}}</h1>' }]}
+            />
+          )}
         </main>
       </div>
+
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
     </>
   );
