@@ -51,4 +51,9 @@ app.listen(PORT, () => {
   logger.info(`🚀 OrkestaPay backend running on http://localhost:${PORT}`);
 });
 
+// Keep alive ping every 14 minutes
+setInterval(() => {
+  const http = require('https');
+  http.get('https://orkestapay-backend.onrender.com/health',() => {};
+  }, 14 * 60 * 1000);
 module.exports = app;
